@@ -1,0 +1,22 @@
+#!/bin/sh
+# pre-commit — keep the served paper in lockstep with its sources.
+#
+# Installed by `make install-hooks` (git does not clone hooks).  Blocks
+# any commit that touches the paper's sources (paper/*.tex, *.bib) or the
+# unit tests' documented behaviour without the rebuilt PDF being synced
+# to docs/probsim.pdf, where the GitHub Pages site serves it.
+#
+# Rationale: README.md ("Web version") promises the site's PDF is always
+# the current paper; this hook makes that promise mechanical.
+
+set -e
+
+if git diff --cached --name-only | grep -qE '^paper/(probsim\.tex|references\.bib)$'; then
+    make -s check-sync || {
+        echo "" >&2
+        echo "pre-commit: paper sources changed but the rebuilt PDFs are" >&2
+        echo "not staged.  Run: git add paper/probsim.pdf docs/probsim.pdf" >&2
+        exit 1
+    }
+fi
+exit 0

@@ -62,10 +62,14 @@ resources.  To publish it:
    the repository moves.
 
 The site links to `docs/probsim.pdf` (a committed copy of the built
-paper) so the full narrative is always one click away; after editing the
-paper, run `make docs` and copy `paper/probsim.pdf` over
-`docs/probsim.pdf` to keep the two in sync.  The paper links back to the
-site from each figure it animates.
+paper) so the full narrative is always one click away.  This copy is kept
+in sync mechanically: `make docs` rebuilds the paper **and** refreshes
+`docs/probsim.pdf`, `make check-sync` verifies the two are identical (and
+that the PDF is not older than its LaTeX sources), and `make
+install-hooks` installs a git pre-commit hook (`scripts/pre-commit`) that
+refuses any commit touching `paper/*.tex` or `*.bib` with a stale or
+unstaged site PDF.  Run `make install-hooks` once per clone.  The paper
+links back to the site from each figure it animates.
 
 ## Distributions covered
 
