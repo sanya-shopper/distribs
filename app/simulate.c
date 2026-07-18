@@ -49,6 +49,9 @@ static double d_beta(ps_rng *r)       { return ps_beta(r, 2.0, 5.0); }
 static double d_chi_squared(ps_rng *r){ return ps_chi_squared(r, 6.0); }
 static double d_student_t(ps_rng *r)  { return ps_student_t(r, 8.0); }
 static double d_f(ps_rng *r)          { return ps_f(r, 5.0, 12.0); }
+static double d_negbin(ps_rng *r)     { return (double)ps_negative_binomial(r, 3, 0.4); }
+static double d_rayleigh(ps_rng *r)   { return ps_rayleigh(r, 2.0); }
+static double d_gumbel(ps_rng *r)     { return ps_gumbel(r, 0.5, 2.0); }
 
 static void print_moments_table(ps_rng *rng, size_t n, double *buf)
 {
@@ -66,6 +69,10 @@ static void print_moments_table(ps_rng *rng, size_t n, double *buf)
         { "ChiSquared(6)",        6.0,        12.0,       d_chi_squared },
         { "StudentT(8)",          0.0,        8.0 / 6.0,  d_student_t   },
         { "F(5, 12)",             1.2,        1.08,       d_f           },
+        /* The hash modeler's annex (paper §3.5, §4.9–§4.10). */
+        { "NegBinomial(3, 0.4)",  4.5,        11.25,      d_negbin      },
+        { "Rayleigh(2)",          2.506628,   1.716815,   d_rayleigh    },
+        { "Gumbel(0.5, 2)",       1.654431,   6.579736,   d_gumbel      },
     };
     const size_t n_rows = sizeof rows / sizeof rows[0];
 

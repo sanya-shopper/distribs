@@ -180,7 +180,11 @@ distributions grow along the left (\S\ref{sec:discrete}),
 \textcolor{sBlue}{continuous} ones along the right (\S\ref{sec:continuous}),
 and the family funnels into the \textcolor{cRed}{$t$-tests} of
 \S\ref{sec:inference}.  Each arrow is literally a line or two of C in
-\texttt{src/dist.c}.\ \webfig{family}}
+\texttt{src/dist.c}.  Three less-common relatives for hash modeling hang
+off this tree: the negative binomial (\S\ref{sec:negbin}) is a sum of
+geometric waits, and the Rayleigh and Gumbel
+(\S\ref{sec:rayleigh}--\ref{sec:gumbel}) are one-line transforms of the
+exponential.\ \webfig{family}}
 \label{fig:family}
 \end{figure}
 
@@ -566,6 +570,44 @@ visible signature of ``many opportunities, each rare''.\ \webfig{discrete}}
 \end{figure}
 
 \srcref{src/dist.c: ps\_poisson(), ps\_poisson\_pmf()}
+
+\subsection{Negative binomial}\label{sec:negbin}
+
+The negative binomial NB$(r,p)$ counts \emph{failures before the $r$-th
+success}:
+\[
+\Pr[X=k]=\binom{k+r-1}{k}p^r(1-p)^k,\qquad
+\E X = \frac{r(1-p)}{p},\quad \Var X = \frac{r(1-p)}{p^2},
+\]
+the geometric of \S\ref{sec:geometric} being the case $r=1$ --- and the
+sampler is that identity, a sum of $r$ geometric waits.  Its CDF is one
+more incomplete-beta reduction, $\Pr[X\le k]=I_p(r,\,k{+}1)$
+(\S\ref{sec:special}).  It wears two very different hats.  As a
+\emph{waiting time} it prices repeated search: if each independent
+attempt succeeds with probability $p$, the total work to collect $r$
+successes is NB-distributed --- which, with $p$ of order $2^{-n}$, is
+exactly the cost model for finding $r$ preimages or $r$ collisions
+against an ideal $n$-bit hash, the multi-target attacks of
+\S\ref{sec:rayleigh}'s annex.  As a \emph{count model} it is the
+gamma-mixed Poisson: let the Poisson rate of \S\ref{sec:poisson} itself
+vary as a gamma (\S\ref{sec:gamma}) across units and the marginal count
+is negative binomial, with the variance exceeding the mean --- the
+promised cure for overdispersion.
+
+\paragraph{Origins and habitat.}
+The pmf appears (as a gambling wait) in Montmort's 1714 analysis of the
+problem of points, and the name records a formal joke: the coefficients
+come from the binomial series with a \emph{negative} exponent.  Its
+modern statistical career began with \citet{greenwood1920}, who derived
+it as the law of accident counts among London munitions workers when
+individual proneness varies --- the original overdispersion argument,
+gamma-mixing included --- and it has been the default model for clumped
+counts ever since: insurance claims, species abundance in quadrats,
+crime counts, and today the per-gene read counts of RNA-seq, whose
+standard analysis tools are negative-binomial regressions at scale.
+
+\srcref{src/dist.c: ps\_negative\_binomial(), ps\_negative\_binomial\_pmf(),
+        ps\_negative\_binomial\_cdf()}
 
 \section{The continuous family}\label{sec:continuous}
 
@@ -999,6 +1041,96 @@ is, in the end, ratios of chi-squareds.
 
 \srcref{src/dist.c: ps\_f(), ps\_f\_cdf()}
 
+\subsection{Rayleigh, and the birthday bound}\label{sec:rayleigh}
+
+The last two members of our collection are less common in introductory
+courses but indispensable in one modern habitat: modeling
+\emph{cryptographic hash functions}.  An ideal $n$-bit hash behaves as a
+random oracle --- each input is a ball thrown uniformly into $N=2^n$ bins
+--- so its security statistics are the statistics of balls in bins, and
+those statistics are governed by exactly the distributions of this and
+the next section.
+
+The Rayleigh$(\sigma)$ distribution has density, mean and variance
+\[
+f(x)=\frac{x}{\sigma^2}e^{-x^2/2\sigma^2}\ (x\ge 0),\qquad
+\E X = \sigma\sqrt{\pi/2},\qquad
+\Var X = \frac{4-\pi}{2}\,\sigma^2 ,
+\]
+and two equivalent geneses: it is the length $\sqrt{Z_1^2+Z_2^2}$ of a
+two-dimensional Gaussian vector (a scaled $\chi$ with 2 df), and it is
+$\sigma\sqrt{2E}$ for a standard exponential $E$ --- the one-line
+inversion sampler.  Its cryptographic starring role is the
+\emph{birthday problem}: throw balls into $N$ bins until two share a bin,
+and the waiting time $T$ satisfies $T/\sqrt{N}\to\mathrm{Rayleigh}(1)$ as
+$N\to\infty$.  Hence collisions in an ideal $n$-bit hash appear after
+about $\sqrt{\pi N/2}\approx 1.25\cdot 2^{n/2}$ evaluations --- the
+\emph{birthday bound} that halves every hash's collision resistance
+relative to its output size, dictates that 128-bit hashes are
+collision-broken at $2^{64}$ work, and sets the $\sqrt{N}$ running time
+of \citet{pollard1975}-style rho methods, whose cycle-finding walks are
+governed by the same law.  The analysis of these collision phenomena is
+classical \citep[\S6.4]{knuth1997}.
+
+\paragraph{Origins and habitat.}
+Lord Rayleigh derived the distribution in 1880 while asking what
+amplitude results from superposing many acoustic vibrations of random
+phase \citep{rayleigh1880} --- a two-dimensional random walk in disguise.
+The same geometry makes it ubiquitous wherever a resultant of many
+random phasors is measured: multipath radio propagation
+(\emph{Rayleigh fading}, the baseline channel model of mobile
+communications), radar clutter amplitudes, sea-wave heights, and wind
+speeds; and wherever squared Gaussian components pair up --- speckle in
+ultrasound and synthetic-aperture imagery.  In the hash-modeling annex
+it is the distribution to simulate when estimating collision-search cost
+under resource constraints, as the driver's Rayleigh row does in
+miniature.
+
+\srcref{src/dist.c: ps\_rayleigh(), ps\_rayleigh\_pdf(),
+        ps\_rayleigh\_cdf()}
+
+\subsection{Gumbel, and the fullest bucket}\label{sec:gumbel}
+
+Where the Rayleigh governs the \emph{first} coincidence, the
+Gumbel$(\mu,\beta)$ distribution governs the \emph{worst} one.  With CDF
+and moments
+\[
+F(x)=\exp\!\bigl(-e^{-(x-\mu)/\beta}\bigr),\qquad
+\E X=\mu+\gamma\beta\ (\gamma\approx 0.5772),\qquad
+\Var X=\frac{\pi^2}{6}\beta^2 ,
+\]
+it is the extreme-value limit: by the Fisher--Tippett theorem
+\citep{fishertippett1928}, suitably centred maxima of independent
+light-tailed draws (normal, exponential, gamma, \dots) converge to it
+--- the CLT's counterpart for maxima rather than sums.  The canonical
+concrete case is exponential draws: $\max(E_1,\dots,E_n)-\ln n \to
+\mathrm{Gumbel}(0,1)$, which the web edition's demo simulates live.  For
+hash modeling it answers ``how bad is the worst case?'': the most-loaded
+bucket of a hash table, the longest probe sequence, and the longest run
+of identical bits in an $n$-bit output stream --- approximately
+$\log_2 n$ plus Gumbel-type fluctuation (up to lattice effects), the null
+distribution behind the longest-run-of-ones test in NIST's randomness
+battery for cryptographic generators \citep{nist2010}.  Sampling is
+double-log inversion, $X=\mu-\beta\ln(-\ln U)$.
+
+\paragraph{Origins and habitat.}
+Extreme-value theory grew from a practical question --- how large a
+flood must a dam survive? --- and Emil Gumbel's \emph{Statistics of
+Extremes} \citep{gumbel1958} turned the Fisher--Tippett limit into an
+engineering discipline; annual-maximum river discharges, extreme winds,
+and design-basis earthquakes are still fitted with his distribution
+(Gumbel himself was also a courageous public statistician, driven from
+Germany for documenting political murders).  Beyond civil engineering it
+models record values in athletics and climate, peak electricity demand,
+and maximal sequence-alignment scores in bioinformatics (BLAST
+$E$-values are Gumbel tail areas); machine learning rediscovered it as
+the \emph{Gumbel-max trick}, which turns softmax sampling into an argmax
+of Gumbel-perturbed scores.  It is the right habitat whenever the
+quantity reported is a maximum over many comparable chances --- which is
+what worst-case analysis of hashing is.
+
+\srcref{src/dist.c: ps\_gumbel(), ps\_gumbel\_pdf(), ps\_gumbel\_cdf()}
+
 \section{From distributions to inference: the t-test}\label{sec:inference}
 
 Everything so far generated data; this section reasons \emph{backwards}
@@ -1227,6 +1359,12 @@ Beta        & unknown proportions        & conjugate prior for $p$; bandits \\
 $\chi^2$    & summed squared noise       & variance CIs, GoF, likelihood ratios \\
 Student $t$ & normalized small samples   & $t$-tests, robust models \\
 $F$         & variance ratios            & ANOVA, regression $F$-tests \\
+\midrule
+Neg.\ binomial & failures before $r$-th success & overdispersed counts;
+  multi-collision cost \\
+Rayleigh    & 2-D Gaussian lengths       & birthday bound; fading channels \\
+Gumbel      & maxima of many draws       & worst-case loads; extremes;
+  NIST runs test \\
 \bottomrule
 \end{tabular}
 \end{center}

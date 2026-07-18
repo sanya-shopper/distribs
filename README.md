@@ -73,6 +73,12 @@ links back to the site from each figure it animates.
 
 ## Distributions covered
 
-Discrete: Bernoulli, binomial, geometric, Poisson.
+Discrete: Bernoulli, binomial, geometric, Poisson, negative binomial.
 Continuous: uniform, exponential, normal, gamma, beta, chi-squared,
-Student's *t*, Fisher's *F*.
+Student's *t*, Fisher's *F*, Rayleigh, Gumbel.
+
+The last three are the "hash modeler's annex" (paper §3.5, §4.9–§4.10):
+less common in introductory courses, but exactly the laws that govern an
+ideal cryptographic hash — multi-collision search cost (negative
+binomial), the birthday bound (Rayleigh), and worst-case bucket loads and
+longest runs (Gumbel).

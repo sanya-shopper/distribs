@@ -61,4 +61,8 @@ fetch bayes-1763.pdf \
 fetch wilks-1938.pdf \
     "https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-9/issue-1/The-Large-Sample-Distribution-of-the-Likelihood-Ratio-for-Testing/10.1214/aoms/1177732360.pdf"
 
+# NIST SP 800-22 rev 1a — open access (paper §4.10, randomness testing).
+fetch nist-sp800-22r1a.pdf \
+    "https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-22r1a.pdf"
+
 echo "done."

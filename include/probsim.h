@@ -66,6 +66,12 @@ double ps_geometric_pmf(long k, double p);
 long   ps_poisson(ps_rng *rng, double lambda);
 double ps_poisson_pmf(long k, double lambda);
 
+/* Negative binomial(r, p): failures before the r-th success
+ * (generalizes the geometric, which is r = 1).                (paper §3.5) */
+long   ps_negative_binomial(ps_rng *rng, long r, double p);
+double ps_negative_binomial_pmf(long k, long r, double p);
+double ps_negative_binomial_cdf(long k, long r, double p);
+
 /* ------------------------------------------------------------------ *
  *  Continuous distributions — samplers, pdf, cdf  (paper §4, src/dist.c)
  *  Samplers/pdf/cdf return NaN on invalid parameters.
@@ -105,6 +111,18 @@ double ps_student_t_cdf(double x, double nu);
 /* Fisher's F(d1, d2) = (U/d1)/(V/d2), U,V independent chi2.   (paper §4.8) */
 double ps_f(ps_rng *rng, double d1, double d2);
 double ps_f_cdf(double x, double d1, double d2);
+
+/* Rayleigh(sigma): length of a 2-D Gaussian vector; governs the
+ * birthday-collision waiting time of an ideal hash.           (paper §4.9) */
+double ps_rayleigh(ps_rng *rng, double sigma);
+double ps_rayleigh_pdf(double x, double sigma);
+double ps_rayleigh_cdf(double x, double sigma);
+
+/* Gumbel(mu, beta): limit law of maxima of light-tailed draws;
+ * longest runs and fullest hash buckets.                     (paper §4.10) */
+double ps_gumbel(ps_rng *rng, double mu, double beta);
+double ps_gumbel_pdf(double x, double mu, double beta);
+double ps_gumbel_cdf(double x, double mu, double beta);
 
 /* ------------------------------------------------------------------ *
  *  Special functions                            (paper §5.1, src/special.c)

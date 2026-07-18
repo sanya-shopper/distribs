@@ -120,6 +120,39 @@ double ps_poisson_pmf(long k, double lambda)
     return exp((double)k * log(lambda) - lambda - lgamma((double)k + 1.0));
 }
 
+/*
+ * Negative binomial(r, p) — paper §3.5.  Counts FAILURES before the
+ * r-th success; the geometric of §3.3 is the case r = 1, and the
+ * sampler is that identity: a sum of r independent geometric waits.
+ * Governs the expected work of multi-collision searches against an
+ * ideal hash (paper §3.5) and overdispersed counts everywhere else.
+ */
+long ps_negative_binomial(ps_rng *rng, long r, double p)
+{
+    if (r < 1 || !(p > 0.0 && p <= 1.0)) return -1;
+    long k = 0;
+    for (long i = 0; i < r; i++)
+        k += ps_geometric(rng, p);
+    return k;
+}
+
+double ps_negative_binomial_pmf(long k, long r, double p)
+{
+    if (r < 1 || !(p > 0.0 && p <= 1.0)) return NAN;
+    if (k < 0) return 0.0;
+    double lc = lgamma((double)(k + r)) - lgamma((double)k + 1.0)
+              - lgamma((double)r);
+    return exp(lc + (double)r * log(p) + (double)k * log1p(-p));
+}
+
+/* P(X <= k) = I_p(r, k+1) — the incomplete-beta reduction again. */
+double ps_negative_binomial_cdf(long k, long r, double p)
+{
+    if (r < 1 || !(p > 0.0 && p <= 1.0)) return NAN;
+    if (k < 0) return 0.0;
+    return ps_incbeta(p, (double)r, (double)k + 1.0);
+}
+
 /* =========================== Continuous =========================== */
 
 /* Uniform(a, b) — paper §4.1. */
@@ -292,4 +325,57 @@ double ps_f_cdf(double x, double d1, double d2)
     if (!(d1 > 0.0) || !(d2 > 0.0)) return NAN;
     if (x <= 0.0) return 0.0;
     return ps_incbeta(d1 * x / (d1 * x + d2), d1 / 2.0, d2 / 2.0);
+}
+
+/*
+ * Rayleigh(sigma) — paper §4.9.  Length of a 2-D Gaussian vector;
+ * equivalently sigma * sqrt(2E) for E ~ Exp(1), which is the inversion
+ * sampler below.  Scaled by sqrt(N), it is the limit law of the
+ * birthday-collision waiting time of an ideal N-bin hash.
+ */
+double ps_rayleigh(ps_rng *rng, double sigma)
+{
+    if (!(sigma > 0.0)) return NAN;
+    return sigma * sqrt(-2.0 * log1p(-ps_runif(rng)));
+}
+
+double ps_rayleigh_pdf(double x, double sigma)
+{
+    if (!(sigma > 0.0)) return NAN;
+    if (x <= 0.0) return 0.0;
+    double s2 = sigma * sigma;
+    return (x / s2) * exp(-0.5 * x * x / s2);
+}
+
+double ps_rayleigh_cdf(double x, double sigma)
+{
+    if (!(sigma > 0.0)) return NAN;
+    return x <= 0.0 ? 0.0 : -expm1(-0.5 * x * x / (sigma * sigma));
+}
+
+/*
+ * Gumbel(mu, beta) — paper §4.10.  The extreme-value limit for maxima
+ * of light-tailed samples; sampled by inversion of the double
+ * exponential, X = mu - beta * ln(-ln U).
+ */
+double ps_gumbel(ps_rng *rng, double mu, double beta)
+{
+    if (!(beta > 0.0)) return NAN;
+    double u = ps_runif(rng);
+    while (u == 0.0)          /* log(0) guard; U = 0 has measure zero */
+        u = ps_runif(rng);
+    return mu - beta * log(-log(u));
+}
+
+double ps_gumbel_pdf(double x, double mu, double beta)
+{
+    if (!(beta > 0.0)) return NAN;
+    double z = (x - mu) / beta;
+    return exp(-(z + exp(-z))) / beta;
+}
+
+double ps_gumbel_cdf(double x, double mu, double beta)
+{
+    if (!(beta > 0.0)) return NAN;
+    return exp(-exp(-(x - mu) / beta));
 }

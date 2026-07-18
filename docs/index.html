@@ -208,9 +208,10 @@ p.hist b { color: var(--ink); }
   <h1>The classical distributions,<br>from uniform bits to the <em>t</em>-test</h1>
   <p class="sub">
     Interactive companion to the <strong>probsim</strong> C99 library and its
-    typeset paper.  Twelve classical probability distributions, each one built
-    from the ones before it, each one animated below — and all of them funneling
-    into a working <em>t</em>-test.  Browse casually here; when you want the
+    typeset paper.  Twelve classical probability distributions — plus a
+    three-member annex for modeling cryptographic hashes — each one built
+    from the ones before it, each one animated below, and all of them
+    funneling into a working <em>t</em>-test.  Browse casually here; when you want the
     full narrative in order, the PDF is one click away and mirrors these
     sections number for number.
   </p>
@@ -402,6 +403,22 @@ p.hist b { color: var(--ink); }
         <button id="bern-reset">reset</button>
       </div>
     </div>
+    <div>
+      <h3 id="negbinomial">Negative binomial(r, p)</h3>
+      <p class="hist"><b>History:</b> a gambling wait in Montmort (1714),
+        reborn with Greenwood &amp; Yule (1920) as the law of accident
+        proneness — the original overdispersion argument.  Today it prices
+        multi-collision searches against an ideal hash and models clumped
+        counts from insurance claims to RNA-seq.</p>
+      <div class="viz"><canvas id="cv-negbin" height="230"></canvas></div>
+      <div class="controls">
+        <label>r <input type="range" id="nb-r" min="1" max="12" step="1" value="3">
+          <span class="val" id="nb-r-v">3</span></label>
+        <label>p <input type="range" id="nb-p" min="0.05" max="0.9" step="0.01"
+          value="0.4"> <span class="val" id="nb-p-v">0.40</span></label>
+      </div>
+      <p class="readout" id="nb-read"></p>
+    </div>
   </div>
   <p class="xref"><b>Paper:</b> §3 &amp; Figure 4 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
@@ -566,6 +583,61 @@ p.hist b { color: var(--ink); }
   </div>
   <p class="xref"><b>Paper:</b> §4.8 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_f()</code></a></p>
+
+  <h3 id="rayleigh">Rayleigh — the birthday bound</h3>
+  <p>
+    An ideal <em>n</em>-bit cryptographic hash is a random oracle: every
+    input is a ball thrown uniformly into N = 2ⁿ bins.  Throw until two
+    balls share a bin and the waiting time, divided by √N, converges to a
+    <strong>Rayleigh</strong> distribution — so collisions arrive after
+    about 1.25·2^(n/2) evaluations.  That is the <em>birthday bound</em>:
+    the reason a 128-bit hash is collision-broken at 2⁶⁴ work, and the √N
+    running time of Pollard's rho.  Run the experiment below and watch the
+    Rayleigh curve materialise out of raw collision counts.
+  </p>
+  <p class="hist"><b>History:</b> Lord Rayleigh derived it in 1880 for the
+    amplitude of many superposed sound waves of random phase — a 2-D
+    random walk in disguise.  The same geometry gives Rayleigh fading in
+    wireless channels, radar clutter, and sea-wave heights.</p>
+  <div class="viz"><canvas id="cv-rayleigh" height="260"></canvas></div>
+  <div class="controls">
+    <label>hash bits n <input type="range" id="ray-bits" min="8" max="16"
+      step="1" value="12"> <span class="val" id="ray-bits-v">12</span></label>
+    <button id="ray-run">run 400 birthday trials</button>
+    <span class="readout" id="ray-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.9 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
+    ps_rayleigh()</code></a> · Rayleigh (1880), Pollard (1975)</p>
+
+  <h3 id="gumbel">Gumbel — the fullest bucket</h3>
+  <p>
+    The Rayleigh governs the <em>first</em> coincidence; the
+    <strong>Gumbel</strong> governs the <em>worst</em> one.  By the
+    Fisher–Tippett theorem, the maximum of many light-tailed draws —
+    minus its drift — converges to Gumbel: the CLT of maxima.  For
+    hashing it answers "how bad is the worst case?": fullest bucket,
+    longest probe sequence, and the longest run of identical bits in a
+    hash output stream (≈ log₂ n plus Gumbel fluctuation — the null of
+    NIST's longest-run randomness test).  The demo simulates the theorem
+    exactly: maxima of n exponentials, minus ln n, against Gumbel(0,1).
+  </p>
+  <p class="hist"><b>History:</b> born of the question "how large a flood
+    must the dam survive?" — Fisher &amp; Tippett proved the limit (1928),
+    Gumbel's <em>Statistics of Extremes</em> (1958) made it engineering.
+    BLAST E-values in bioinformatics are Gumbel tails, and ML's Gumbel-max
+    trick turns softmax sampling into argmax of Gumbel noise.</p>
+  <div class="viz"><canvas id="cv-gumbel" height="260"></canvas></div>
+  <div class="controls">
+    <label>sample size n <input type="range" id="gum-n" min="1" max="3"
+      step="0.05" value="2"> <span class="val" id="gum-n-v">100</span></label>
+    <button id="gum-run">simulate 400 maxima</button>
+    <span class="readout" id="gum-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.10 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
+    ps_gumbel()</code></a> · Fisher &amp; Tippett (1928), Gumbel (1958),
+    NIST SP 800-22</p>
 </section>
 
 <section class="panel" id="ttest">
@@ -621,6 +693,9 @@ p.hist b { color: var(--ink); }
       <tr><td><a href="#chisq">Chi-squared</a></td><td>summed squared noise</td><td>variance CIs, GoF, likelihood ratios</td></tr>
       <tr><td><a href="#studentt">Student <em>t</em></a></td><td>normalized small samples</td><td><em>t</em>-tests, robust models</td></tr>
       <tr><td><a href="#fdist"><em>F</em></a></td><td>variance ratios</td><td>ANOVA, regression <em>F</em>-tests</td></tr>
+      <tr><td><a href="#negbinomial">Neg. binomial</a></td><td>failures before <em>r</em>-th success</td><td>overdispersed counts; multi-collision cost</td></tr>
+      <tr><td><a href="#rayleigh">Rayleigh</a></td><td>2-D Gaussian lengths</td><td>birthday bound; fading channels</td></tr>
+      <tr><td><a href="#gumbel">Gumbel</a></td><td>maxima of many draws</td><td>worst-case loads; extremes; NIST runs test</td></tr>
     </tbody>
   </table>
   <p class="note">
@@ -672,6 +747,24 @@ p.hist b { color: var(--ink); }
       <a href="https://doi.org/10.1145/1268776.1268777">doi:10.1145/1268776.1268777</a></li>
     <li>Doty-Humphrey, <em>PractRand</em> — statistical test suite.
       <a href="https://pracrand.sourceforge.net">pracrand.sourceforge.net</a></li>
+    <li>Rayleigh (1880), “On the resultant of a large number of vibrations…”,
+      <em>Phil. Mag.</em> 10(60).
+      <a href="https://doi.org/10.1080/14786448008626893">doi:10.1080/14786448008626893</a></li>
+    <li>Greenwood &amp; Yule (1920), “An inquiry into the nature of frequency
+      distributions…”, <em>J. Royal Stat. Soc.</em> 83(2).
+      <a href="https://doi.org/10.2307/2341080">doi:10.2307/2341080</a></li>
+    <li>Fisher &amp; Tippett (1928), “Limiting forms of the frequency
+      distribution of the largest or smallest member of a sample”,
+      <em>Proc. Camb. Phil. Soc.</em> 24(2).
+      <a href="https://doi.org/10.1017/S0305004100015681">doi:10.1017/S0305004100015681</a></li>
+    <li>Gumbel (1958), <em>Statistics of Extremes</em>, Columbia Univ. Press.</li>
+    <li>Pollard (1975), “A Monte Carlo method for factorization”,
+      <em>BIT</em> 15(3).
+      <a href="https://doi.org/10.1007/BF01933667">doi:10.1007/BF01933667</a></li>
+    <li>Rukhin et al. (2010), <em>NIST SP 800-22 rev 1a</em> — statistical
+      tests for cryptographic RNGs.
+      <a href="https://doi.org/10.6028/NIST.SP.800-22r1a">doi:10.6028/NIST.SP.800-22r1a</a>
+      <span class="local">· local copy <code>refs/nist-sp800-22r1a.pdf</code></span></li>
     <li>Welford (1962), “Note on a method for calculating corrected sums of
       squares and products”, <em>Technometrics</em> 4(3).
       <a href="https://doi.org/10.1080/00401706.1962.10490022">doi:10.1080/00401706.1962.10490022</a></li>
@@ -818,6 +911,15 @@ const binomPmf = (k, n, p) =>
 const poisPmf = (k, lam) =>
   Math.exp(k * Math.log(lam) - lam - lgamma(k + 1));
 const geomPmf = (k, p) => p * Math.exp(k * Math.log1p(-p));
+const negbinPmf = (k, r, p) =>
+  Math.exp(lgamma(k + r) - lgamma(k + 1) - lgamma(r)
+           + r * Math.log(p) + k * Math.log1p(-p));
+const rayleighPdf = (x, s) =>
+  x <= 0 ? 0 : (x / (s * s)) * Math.exp(-0.5 * x * x / (s * s));
+const gumbelPdf = (x, mu, b) => {
+  const z = (x - mu) / b;
+  return Math.exp(-(z + Math.exp(-z))) / b;
+};
 
 /* Polar Box–Muller — port of src/dist.c: ps_normal() (Math.random is the
  * browser's stand-in for ps_runif). */
@@ -1400,6 +1502,23 @@ pmfPanel('cv-geom', 'geo-read', {
   wire(set) { slider('geo-p', 2, v => set({ p: v })); },
 });
 
+pmfPanel('cv-negbin', 'nb-read', {
+  color: '--yellow',
+  init: { r: 3, p: 0.4 },
+  range: ({ r, p }) => ({
+    kmax: Math.max(8, Math.min(80,
+      Math.ceil(r * (1 - p) / p + 4 * Math.sqrt(r * (1 - p)) / p))),
+    pmf: k => negbinPmf(k, r, p),
+  }),
+  moments: ({ r, p }) =>
+    `mean r(1−p)/p = ${fmt(r * (1 - p) / p, 2)}   ` +
+    `variance r(1−p)/p² = ${fmt(r * (1 - p) / (p * p), 2)}`,
+  wire(set, get) {
+    slider('nb-r', 0, v => set({ ...get(), r: v }));
+    slider('nb-p', 2, v => set({ ...get(), p: v }));
+  },
+});
+
 /* Bernoulli running-proportion demo. */
 (function bernoulli() {
   let succ = 0, n = 0;
@@ -1698,7 +1817,111 @@ function densityPanel(cvId, h, getState, spec) {
 })();
 
 /* ================================================================== *
- *  Panel: the t-test playground (paper Figure 8, §5)
+ *  Panels: the hash modeler's annex (paper §4.9–§4.10)
+ *  Shared helper: histogram of simulated values with a theoretical
+ *  density curve overlaid — the "watch the theorem appear" display.
+ * ================================================================== */
+function histWithCurve(cv, h, samples, xmin, xmax, f, labels) {
+  const BINS = 36, bw = (xmax - xmin) / BINS;
+  const counts = new Array(BINS).fill(0);
+  samples.forEach(v => {
+    const b = Math.floor((v - xmin) / bw);
+    if (b >= 0 && b < BINS) counts[b]++;
+  });
+  let ymax = 0;
+  for (let i = 0; i <= 200; i++)
+    ymax = Math.max(ymax, f(xmin + (xmax - xmin) * i / 200));
+  if (samples.length)
+    counts.forEach(c => {
+      ymax = Math.max(ymax, c / samples.length / bw);
+    });
+  ymax *= 1.15;
+  const ch = chart(cv, h, { xmin, xmax, ymin: 0, ymax });
+  ch.clear();
+  ch.axes(niceTicks(xmin, xmax, 6), niceTicks(0, ymax, 3));
+  if (samples.length) {
+    ch.ctx.fillStyle = cssv('--blue-soft');
+    counts.forEach((c, i) => {
+      const d = c / samples.length / bw;
+      if (!d) return;
+      ch.ctx.fillRect(ch.X(xmin + i * bw) + 1, ch.Y(d),
+                      ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(d));
+    });
+  }
+  ch.curve(f, cssv('--blue'));
+  (labels || []).forEach(([txt, x, y, color]) =>
+    ch.label(txt, x, y === 0 ? ymax * 0.88 : y, cssv(color || '--blue')));
+}
+
+/* Rayleigh: the birthday experiment against an ideal 2^bits-bin hash. */
+(function rayleighPanel() {
+  const cv = $('cv-rayleigh');
+  let bits = 12, samples = [];
+  function xmax() { return 3.2 * Math.sqrt(2 ** bits); }
+  function draw() {
+    const s = Math.sqrt(2 ** bits);   /* Rayleigh scale = sqrt(N) */
+    histWithCurve(cv, 260, samples, 0, xmax(),
+      x => rayleighPdf(x, s),
+      [[`Rayleigh(√N), N = 2^${bits}`, xmax() * 0.55, 0]]);
+    const mean = s * Math.sqrt(Math.PI / 2);
+    $('ray-read').textContent = samples.length
+      ? `observed mean ${fmt(summarize(samples).mean, 1)} vs theory ` +
+        `√(πN/2) = ${fmt(mean, 1)} (${samples.length} trials)`
+      : `theory: first collision after about √(πN/2) = ${fmt(mean, 1)} draws`;
+  }
+  function trial() {
+    const N = 2 ** bits, seen = new Set();
+    for (let t = 1; ; t++) {
+      const v = Math.floor(Math.random() * N);
+      if (seen.has(v)) return t;
+      seen.add(v);
+    }
+  }
+  $('ray-run').addEventListener('click', () => {
+    for (let i = 0; i < 400; i++) samples.push(trial());
+    draw();
+  });
+  slider('ray-bits', 0, v => { bits = v; samples = []; draw(); });
+  onRedraw(draw);
+})();
+
+/* Gumbel: Fisher–Tippett live — max of n exponentials minus ln n. */
+(function gumbelPanel() {
+  const cv = $('cv-gumbel');
+  let n = 100, samples = [];
+  function draw() {
+    histWithCurve(cv, 260, samples, -3, 7,
+      x => gumbelPdf(x, 0, 1),
+      [[`Gumbel(0,1)  vs  max of n = ${n} exponentials − ln n`, -2.6, 0]]);
+    $('gum-read').textContent = samples.length
+      ? `observed mean ${fmt(summarize(samples).mean, 3)} vs theory ` +
+        `γ ≈ 0.577 (${samples.length} maxima)`
+      : 'theory: mean → Euler–Mascheroni γ ≈ 0.577 as n grows';
+  }
+  $('gum-run').addEventListener('click', () => {
+    for (let i = 0; i < 400; i++) {
+      let mx = 0;
+      for (let j = 0; j < n; j++)
+        mx = Math.max(mx, -Math.log(1 - Math.random()));
+      samples.push(mx - Math.log(n));
+    }
+    draw();
+  });
+  /* log-scale slider: value 1..3 -> n = 10^value */
+  const el = $('gum-n');
+  const update = () => {
+    n = Math.round(10 ** Number(el.value));
+    $('gum-n-v').textContent = String(n);
+    samples = [];
+    draw();
+  };
+  el.addEventListener('input', update);
+  update();
+  onRedraw(draw);
+})();
+
+/* ================================================================== *
+ *  Panel: the t-test playground (paper Figure 9, §5)
  * ================================================================== */
 (function tTestPanel() {
   const MU0 = 10;

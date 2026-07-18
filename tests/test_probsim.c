@@ -73,6 +73,15 @@ static void test_pmf_pdf_fixtures(void)
     CHECK_CLOSE(ps_poisson_pmf(3, 4.0), 0.195366814813165, 1e-12);
     /* geometric: p (1-p)^k = 0.2 * 0.8^2 */
     CHECK_CLOSE(ps_geometric_pmf(2, 0.2), 0.128, 1e-12);
+    /* scipy.stats.nbinom.pmf(5, 3, 0.4) */
+    CHECK_CLOSE(ps_negative_binomial_pmf(5, 3, 0.4), 0.104509440000000, 1e-12);
+    /* negative binomial with r = 1 must equal the geometric */
+    CHECK_CLOSE(ps_negative_binomial_pmf(4, 1, 0.2),
+                ps_geometric_pmf(4, 0.2), 1e-15);
+    /* scipy.stats.rayleigh.pdf(1.5, scale=2) */
+    CHECK_CLOSE(ps_rayleigh_pdf(1.5, 2.0), 0.283064850745878, 1e-12);
+    /* scipy.stats.gumbel_r.pdf(1.0, loc=0.5, scale=2) */
+    CHECK_CLOSE(ps_gumbel_pdf(1.0, 0.5, 2.0), 0.178717673086091, 1e-12);
     /* scipy.stats.norm.pdf(1.0) */
     CHECK_CLOSE(ps_normal_pdf(1.0, 0.0, 1.0), 0.241970724519143, 1e-12);
     /* scipy.stats.t.pdf(1.0, 8) */
@@ -107,6 +116,12 @@ static void test_cdf_fixtures(void)
     CHECK_CLOSE(ps_gamma_cdf(5.0, 3.0, 2.0), 0.456186884116670, 1e-12);
     /* scipy.stats.expon.cdf(1.2, scale=2) — rate 0.5 */
     CHECK_CLOSE(ps_exponential_cdf(1.2, 0.5), 0.451188363905974, 1e-12);
+    /* scipy.stats.nbinom.cdf(5, 3, 0.4) — via I_p(r, k+1) */
+    CHECK_CLOSE(ps_negative_binomial_cdf(5, 3, 0.4), 0.684605440000000, 1e-12);
+    /* scipy.stats.rayleigh.cdf(1.5, scale=2) */
+    CHECK_CLOSE(ps_rayleigh_cdf(1.5, 2.0), 0.245160398010993, 1e-12);
+    /* scipy.stats.gumbel_r.cdf(1.0, loc=0.5, scale=2) */
+    CHECK_CLOSE(ps_gumbel_cdf(1.0, 0.5, 2.0), 0.458956069307664, 1e-12);
 
     /* Edges and invalid parameters. */
     CHECK(ps_exponential_cdf(-1.0, 0.5) == 0.0);
@@ -218,6 +233,9 @@ static double m_beta(ps_rng *r)       { return ps_beta(r, 2.0, 5.0); }
 static double m_chi_squared(ps_rng *r){ return ps_chi_squared(r, 6.0); }
 static double m_student_t(ps_rng *r)  { return ps_student_t(r, 8.0); }
 static double m_f(ps_rng *r)          { return ps_f(r, 5.0, 12.0); }
+static double m_negbin(ps_rng *r)     { return (double)ps_negative_binomial(r, 3, 0.4); }
+static double m_rayleigh(ps_rng *r)   { return ps_rayleigh(r, 2.0); }
+static double m_gumbel(ps_rng *r)     { return ps_gumbel(r, 0.5, 2.0); }
 
 static void test_sampler_moments(void)
 {
@@ -239,6 +257,10 @@ static void test_sampler_moments(void)
     check_moments("StudentT(8)",        m_student_t,   0.0,     8.0/6.0, &rng);
     /* Var[F(d1,d2)] = 2 d2^2 (d1+d2-2) / (d1 (d2-2)^2 (d2-4)) = 1.08 here. */
     check_moments("F(5,12)",            m_f,           1.2,     1.08,    &rng);
+    /* The hash modeler's annex (paper §3.5, §4.9–§4.10). */
+    check_moments("NegBin(3,0.4)",      m_negbin,      4.5,     11.25,   &rng);
+    check_moments("Rayleigh(2)",        m_rayleigh,    2.506628, 1.716815, &rng);
+    check_moments("Gumbel(0.5,2)",      m_gumbel,      1.654431, 6.579736, &rng);
 }
 
 /* ---- 7. Simulated type-I error rate of the t-test (paper §6.3) ---- */
