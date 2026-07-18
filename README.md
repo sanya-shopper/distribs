@@ -56,8 +56,10 @@ resources.  To publish it:
 1. Push this repository to GitHub.
 2. In the repo: *Settings → Pages → Deploy from a branch → `main` /
    `docs`*.
-3. Edit the `REPO_URL` constant at the top of the `<script>` block in
-   `docs/index.html` so the site's "code" links point at your repository.
+3. The `REPO_URL` constant in `docs/index.html` and `\siteurl` in
+   `paper/probsim.tex` are set for `sanya-shopper/distribs`
+   (site: <https://sanya-shopper.github.io/distribs/>); update both if
+   the repository moves.
 
 The site links to `docs/probsim.pdf` (a committed copy of the built
 paper) so the full narrative is always one click away; after editing the
