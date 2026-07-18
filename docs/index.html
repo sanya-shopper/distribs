@@ -83,6 +83,8 @@ code, .mono {
   font-size: 0.88em;
   color: var(--ink2);
 }
+/* code that links into the repository reads as a link */
+a code { color: var(--blue); }
 header.top {
   position: sticky; top: 0; z-index: 10;
   background: color-mix(in srgb, var(--page) 88%, transparent);
@@ -283,7 +285,8 @@ p.hist b { color: var(--ink); }
     linear</strong> generator: a linear engine advances the 256-bit state
     with only XORs, shifts and rotations — a linear map over the two-element
     field — and a small nonlinear scrambler,
-    <code>rotl(s₀+s₃, 23) + s₀</code>, hashes each state into the output
+    <code data-code="src/rng.c">rotl(s₀+s₃, 23) + s₀</code>, hashes each
+    state into the output
     word.  Linear engines are the one class mathematics can fully analyse;
     the scrambler erases their linear fingerprints without touching the
     state, so it provably cannot shorten the cycle.
@@ -297,9 +300,11 @@ p.hist b { color: var(--ink); }
     2²⁵⁶−1 — is primitive, so the state walks a single cycle through
     <em>every</em> nonzero 256-bit state: period exactly 2²⁵⁶−1.  The all-zero state is
     the unique fixed point and must never be used (why
-    <code>ps_rng_seed()</code> feeds every seed through splitmix64).
+    <code data-code="src/rng.c">ps_rng_seed()</code> feeds every seed
+    through splitmix64).
     Jumping ahead is a matrix power, computable exactly: the published
-    <code>jump</code>/<code>long_jump</code> functions advance precisely
+    <a href="https://prng.di.unimi.it/xoshiro256plusplus.c"><code>jump</code>/<code>long_jump</code></a>
+    functions advance precisely
     2¹²⁸ and 2¹⁹² steps, giving parallel streams that are guaranteed never
     to overlap.  For the sibling *&nbsp;/&nbsp;** scramblers the authors
     prove 4-dimensional equidistribution at this state size.
@@ -317,7 +322,8 @@ p.hist b { color: var(--ink); }
   <p>
     Below, the claim made visible: each row is the 64 bits of one output.
     On the left, xoshiro256++ (the same algorithm as
-    <code>src/rng.c</code>, ported to JavaScript).  On the right, the
+    <code data-code="src/rng.c">src/rng.c</code>, ported to JavaScript).
+    On the right, the
     low-order bits of a classic power-of-two LCG — <em>provably</em>
     periodic with tiny period, which is why the stripes appear for every
     seed you try.
@@ -394,7 +400,8 @@ p.hist b { color: var(--ink); }
         the binomial is <em>n</em> Bernoullis summed, the geometric counts
         failures before the first success, and the Poisson is the
         <em>n</em>→∞ limit of rare Bernoullis.  In the library the sampler is
-        one comparison: <code>ps_runif(rng) &lt; p</code>.
+        one comparison:
+        <code data-code="src/dist.c">ps_runif(rng) &lt; p</code>.
       </p>
       <p class="hist"><b>History:</b> named for Jacob Bernoulli, whose
         <em>Ars Conjectandi</em> (1713) proved the first law of large
@@ -653,7 +660,8 @@ p.hist b { color: var(--ink); }
     This playground simulates a sample from
     <em>N</em>(10&nbsp;+&nbsp;δ,&nbsp;σ) and tests
     H₀:&nbsp;mean&nbsp;=&nbsp;10, exactly as
-    <code>ps_t_test_one_sample()</code> does in C.  Set δ = 0 to feel what a
+    <code data-code="src/stats.c">ps_t_test_one_sample()</code> does in C.
+    Set δ = 0 to feel what a
     true null does; raise δ or <em>n</em> to watch power appear.
   </p>
   <div class="viz"><canvas id="cv-ttest" height="330"></canvas></div>
@@ -714,7 +722,8 @@ p.hist b { color: var(--ink); }
   <p style="font-size:14.5px">
     The complete BibTeX bibliography lives in
     <a data-code="paper/references.bib"><code>paper/references.bib</code></a>;
-    <code>make fetch-refs</code> downloads local PDF copies of the open-access
+    <code data-code="scripts/fetch_refs.sh">make fetch-refs</code>
+    downloads local PDF copies of the open-access
     items into <a data-code="refs"><code>refs/</code></a>.  The load-bearing
     originals:
   </p>
@@ -818,8 +827,16 @@ p.hist b { color: var(--ink); }
 const REPO_URL = "https://github.com/sanya-shopper/distribs";
 
 document.querySelectorAll('[data-repo]').forEach(a => { a.href = REPO_URL; });
-document.querySelectorAll('[data-code]').forEach(a => {
-  a.href = REPO_URL + "/blob/main/" + a.dataset.code;
+/* Any element marked data-code becomes a link to that path in the repo.
+ * Anchors get their href set; other elements (e.g. bare <code>) are
+ * wrapped in a new anchor so the markup can stay natural. */
+document.querySelectorAll('[data-code]').forEach(el => {
+  const url = REPO_URL + "/blob/main/" + el.dataset.code;
+  if (el.tagName === 'A') { el.href = url; return; }
+  const a = document.createElement('a');
+  a.href = url;
+  el.replaceWith(a);
+  a.appendChild(el);
 });
 
 const REDUCED_MOTION =
