@@ -1,0 +1,150 @@
+/*
+ * simulate.c — driver application for the probsim library.
+ *
+ * Walked through in the companion paper, docs/probsim.tex §6 ("The driver
+ * and the tests").  Usage:
+ *
+ *     ./simulate [seed] [n]      (defaults: seed 20260718, n 200000)
+ *
+ * The program does two things:
+ *
+ *   1. Simulates n draws from each of the twelve classical distributions
+ *      and prints the sample mean/variance next to the theoretical
+ *      values, so agreement is visible at a glance (law of large
+ *      numbers in action, paper §6.1).
+ *
+ *   2. Runs the two t-tests of src/stats.c on freshly simulated data:
+ *      a one-sample test where H0 is TRUE (the p-value should look
+ *      uniform-ish, i.e. usually > 0.05) and a Welch test where H0 is
+ *      FALSE (the p-value should be tiny) — paper §6.2.
+ */
+#include "probsim.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+/* One row of the moments table: name, theoretical moments, and n draws
+ * produced by the callback.  Keeping the callback signature uniform lets
+ * the table itself stay declarative (see rows[] in main). */
+typedef double (*sampler_fn)(ps_rng *rng);
+
+typedef struct {
+    const char *name;
+    double      mean;   /* theoretical E[X]   */
+    double      var;    /* theoretical Var[X] */
+    sampler_fn  draw;
+} dist_row;
+
+/* --- fixed-parameter wrappers so each table row is a plain function --- */
+/* Parameters here deliberately match the worked examples in paper §3–§4. */
+static double d_bernoulli(ps_rng *r)  { return ps_bernoulli(r, 0.3); }
+static double d_binomial(ps_rng *r)   { return (double)ps_binomial(r, 20, 0.25); }
+static double d_geometric(ps_rng *r)  { return (double)ps_geometric(r, 0.2); }
+static double d_poisson(ps_rng *r)    { return (double)ps_poisson(r, 4.0); }
+static double d_uniform(ps_rng *r)    { return ps_uniform(r, -1.0, 3.0); }
+static double d_exponential(ps_rng *r){ return ps_exponential(r, 0.5); }
+static double d_normal(ps_rng *r)     { return ps_normal(r, 10.0, 2.0); }
+static double d_gamma(ps_rng *r)      { return ps_gamma(r, 3.0, 2.0); }
+static double d_beta(ps_rng *r)       { return ps_beta(r, 2.0, 5.0); }
+static double d_chi_squared(ps_rng *r){ return ps_chi_squared(r, 6.0); }
+static double d_student_t(ps_rng *r)  { return ps_student_t(r, 8.0); }
+static double d_f(ps_rng *r)          { return ps_f(r, 5.0, 12.0); }
+
+static void print_moments_table(ps_rng *rng, size_t n, double *buf)
+{
+    /* Theoretical moments follow the formulas tabulated in paper §3–§4. */
+    const dist_row rows[] = {
+        { "Bernoulli(0.3)",       0.3,        0.21,       d_bernoulli   },
+        { "Binomial(20, 0.25)",   5.0,        3.75,       d_binomial    },
+        { "Geometric(0.2)",       4.0,        20.0,       d_geometric   },
+        { "Poisson(4)",           4.0,        4.0,        d_poisson     },
+        { "Uniform(-1, 3)",       1.0,        4.0 / 3.0,  d_uniform     },
+        { "Exponential(0.5)",     2.0,        4.0,        d_exponential },
+        { "Normal(10, 2)",        10.0,       4.0,        d_normal      },
+        { "Gamma(3, 2)",          6.0,        12.0,       d_gamma       },
+        { "Beta(2, 5)",           2.0 / 7.0,  10.0/392.0, d_beta        },
+        { "ChiSquared(6)",        6.0,        12.0,       d_chi_squared },
+        { "StudentT(8)",          0.0,        8.0 / 6.0,  d_student_t   },
+        { "F(5, 12)",             1.2,        1.08,       d_f           },
+    };
+    const size_t n_rows = sizeof rows / sizeof rows[0];
+
+    printf("Moments over %zu draws per distribution "
+           "(sample vs. theory)\n\n", n);
+    printf("%-20s %10s %10s   %10s %10s\n",
+           "distribution", "mean", "E[X]", "variance", "Var[X]");
+    printf("%-20s %10s %10s   %10s %10s\n",
+           "------------", "----", "----", "--------", "------");
+
+    for (size_t i = 0; i < n_rows; i++) {
+        for (size_t j = 0; j < n; j++)
+            buf[j] = rows[i].draw(rng);
+        ps_summary s = ps_summarize(buf, n);
+        printf("%-20s %10.4f %10.4f   %10.4f %10.4f\n",
+               rows[i].name, s.mean, rows[i].mean, s.var, rows[i].var);
+    }
+}
+
+static void print_t_test(const char *title, ps_t_test t)
+{
+    printf("%s\n", title);
+    if (!t.ok) {
+        printf("  (test could not be run)\n\n");
+        return;
+    }
+    printf("  estimate = %8.4f   se = %.4f\n", t.estimate, t.se);
+    printf("  t = %8.4f   df = %8.2f   two-sided p = %.4g\n",
+           t.t, t.df, t.p);
+    printf("  => %s H0 at the 5%% level\n\n",
+           t.p < 0.05 ? "REJECT" : "do not reject");
+}
+
+int main(int argc, char **argv)
+{
+    uint64_t seed = argc > 1 ? strtoull(argv[1], NULL, 10) : 20260718ULL;
+    size_t   n    = argc > 2 ? (size_t)strtoull(argv[2], NULL, 10) : 200000;
+    if (n < 2) {
+        fprintf(stderr, "usage: %s [seed] [n>=2]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    ps_rng rng;
+    ps_rng_seed(&rng, seed);
+
+    double *buf = malloc(n * sizeof *buf);
+    double *buf2 = malloc(n * sizeof *buf2);
+    if (buf == NULL || buf2 == NULL) {
+        fprintf(stderr, "out of memory\n");
+        free(buf);
+        free(buf2);
+        return EXIT_FAILURE;
+    }
+
+    printf("probsim driver — seed %llu\n", (unsigned long long)seed);
+    printf("======================================================"
+           "==============\n\n");
+    print_moments_table(&rng, n, buf);
+
+    /* ---- t-test demos on simulated data (paper §6.2) ---- */
+    printf("\nt-tests on freshly simulated data (m = 30 per sample)\n");
+    printf("-----------------------------------------------------\n\n");
+    const size_t m = 30;
+
+    /* (a) H0 true: X ~ N(10, 2), testing E[X] = 10. */
+    for (size_t i = 0; i < m; i++)
+        buf[i] = ps_normal(&rng, 10.0, 2.0);
+    print_t_test("One-sample t-test: X ~ N(10, 2), H0: mean = 10 (H0 true)",
+                 ps_t_test_one_sample(buf, m, 10.0));
+
+    /* (b) H0 false: X ~ N(10, 2) vs Y ~ N(11.5, 3) — a real difference,
+     * unequal variances, so Welch is the right tool. */
+    for (size_t i = 0; i < m; i++)
+        buf2[i] = ps_normal(&rng, 11.5, 3.0);
+    print_t_test("Welch t-test: N(10, 2) vs N(11.5, 3), H0: equal means "
+                 "(H0 false)",
+                 ps_t_test_welch(buf, m, buf2, m));
+
+    free(buf);
+    free(buf2);
+    return EXIT_SUCCESS;
+}
