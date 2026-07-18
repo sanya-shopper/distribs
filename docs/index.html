@@ -289,9 +289,13 @@ p.hist b { color: var(--ink); }
     state, so it provably cannot shorten the cycle.
   </p>
   <p>
-    <strong>Proved:</strong> the engine's characteristic polynomial is
-    primitive, so the state walks a single cycle through <em>every</em>
-    nonzero 256-bit state — period exactly 2²⁵⁶−1.  The all-zero state is
+    <strong>Proved:</strong> the engine's characteristic polynomial —
+    degree 256, weight 115, spelled out in paper §2.2 and rederived from
+    the C code itself by
+    <a data-code="scripts/charpoly.py"><code>scripts/charpoly.py</code></a>,
+    which certifies primitivity against the complete factorization of
+    2²⁵⁶−1 — is primitive, so the state walks a single cycle through
+    <em>every</em> nonzero 256-bit state: period exactly 2²⁵⁶−1.  The all-zero state is
     the unique fixed point and must never be used (why
     <code>ps_rng_seed()</code> feeds every seed through splitmix64).
     Jumping ahead is a matrix power, computable exactly: the published

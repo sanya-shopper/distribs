@@ -5,7 +5,10 @@
  * randomness comes from"); §2.2 examines this generator in detail —
  * what is proved (period 2^256-1, exact jump functions, the forbidden
  * all-zero state), what is empirical (BigCrush, PractRand, the
- * Hamming-weight dependency test), and what remains open.
+ * Hamming-weight dependency test), and what remains open.  The engine's
+ * primitive characteristic polynomial, on which the period theorem
+ * rests, is derived from this very code and certified by
+ * scripts/charpoly.py (printed in paper §2.2).
  * Public interface: include/probsim.h.
  *
  * The generator is xoshiro256++ (Blackman & Vigna 2021; local copy at

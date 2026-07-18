@@ -36,7 +36,13 @@
 \definecolor{gridL}{HTML}{E1E0D9}
 \definecolor{axisL}{HTML}{C3C2B7}
 
-\usepackage[colorlinks=true,linkcolor=sBlue,citecolor=sGreen,urlcolor=sBlue]{hyperref}
+% backref=page makes the bibliography link BACK to every page that cites
+% each entry, so text -> bibliography -> text is fully round-trip.
+\usepackage[colorlinks=true,linkcolor=sBlue,citecolor=sGreen,urlcolor=sBlue,
+            backref=page]{hyperref}
+\renewcommand*{\backref}[1]{}
+\renewcommand*{\backrefalt}[4]{{\footnotesize\sffamily\color{inkM}%
+  \ifcase #1\or [cited on p.~#2]\else [cited on pp.~#2]\fi}}
 
 \numberwithin{equation}{section}
 
@@ -96,7 +102,8 @@
 \begin{abstract}
 \noindent
 This paper accompanies \texttt{probsim}, a small C99 library that simulates
-the twelve classical probability distributions and carries the results all
+the twelve classical probability distributions --- plus a three-member
+annex for modeling cryptographic hashes --- and carries the results all
 the way to working $t$-tests.  For each distribution we explain what it
 models, where it earns its keep in statistical inference and applied
 modeling, and how the library simulates it --- always with the simplest
@@ -111,6 +118,28 @@ paper also has \href{\siteurl}{an interactive web edition}
 animated --- each figure caption below links to its interactive
 counterpart.
 \end{abstract}
+
+% ---- the distributions at a glance (every entry is a hyperlink) ----
+\begin{center}
+{\normalsize\textbf{The distributions at a glance}}\\[6pt]
+{\small\sffamily
+\begin{tabular}{lll}
+\textcolor{sGreen}{\textbf{discrete}} &
+\textcolor{sBlue}{\textbf{continuous}} &
+\textcolor{inkS}{\textbf{machinery \& inference}} \\[2pt]
+Bernoulli \S\ref{sec:bernoulli}      & Uniform \S\ref{sec:uniform}         & the generator \S\ref{sec:prng} \\
+Binomial \S\ref{sec:binomial}        & Exponential \S\ref{sec:exponential} & special functions \S\ref{sec:special} \\
+Geometric \S\ref{sec:geometric}      & Normal \S\ref{sec:normal}           & one-sample $t$-test \S\ref{sec:onesample} \\
+Poisson \S\ref{sec:poisson}          & Gamma \S\ref{sec:gamma}             & Welch's $t$-test \S\ref{sec:welch} \\
+Neg.\ binomial \S\ref{sec:negbin}    & Beta \S\ref{sec:beta}               & driver \& tests \S\ref{sec:driver} \\
+                                     & Chi-squared \S\ref{sec:chisq}       & cheat sheet \S\ref{sec:cheatsheet} \\
+                                     & Student's $t$ \S\ref{sec:studentt}  & \\
+                                     & $F$ \S\ref{sec:f}                   & \\
+                                     & Rayleigh \S\ref{sec:rayleigh}       & \\
+                                     & Gumbel \S\ref{sec:gumbel}           & \\
+\end{tabular}}
+\end{center}
+\bigskip
 
 \section{Introduction}\label{sec:intro}
 
@@ -330,10 +359,27 @@ non-overlapping substreams for parallel simulation.\ \webfig{prng}}
 \end{figure}
 
 \paragraph{What is proved.}
-The engine's transition matrix over $\mathbb{F}_2$ has a primitive
-characteristic polynomial, which yields the central theorem: the state
-sequence is one single cycle through \emph{every} nonzero 256-bit state,
-so the period is exactly $2^{256}-1$ \citep{blackman2021xoshiro}.  Two
+The engine's transition matrix $M$ over $\mathbb{F}_2$ has a
+\emph{primitive} characteristic polynomial
+$P(x)=\det(xI-M)$ --- degree 256, weight 115 (an odd weight, as any
+irreducible binary polynomial must have).  Packing bit $i$ with the
+coefficient of $x^i$, it reads, in hexadecimal,
+\begin{center}\small
+\texttt{0x1\,0003c03c\,3f3ecb19\,04b4edcf\,26259f85\,0280002b\,%
+cefd1a5e\,9d116f2b\,b0f0f001}.
+\end{center}
+The repository does not ask the reader to take this on faith:
+\texttt{scripts/charpoly.py} rederives $P$ from the engine code itself
+(Berlekamp--Massey on an output-bit sequence, certified against a second
+independent state bit) and then proves primitivity by verifying
+$x^{2^{256}-1}\equiv 1$ and $x^{(2^{256}-1)/q}\not\equiv 1 \pmod{P}$ for
+every prime $q$ dividing $2^{256}-1$, whose complete factorization is
+classical (it descends from the Fermat numbers $F_0$--$F_7$).  On the
+algebra of primitive polynomials and linear recurrences see
+\citet[ch.~3, ch.~8]{lidl1997}; the design context is
+\citet{blackman2021xoshiro}.  Primitivity is exactly the central
+theorem: the state sequence is one single cycle through \emph{every}
+nonzero 256-bit state, so the period is exactly $2^{256}-1$.  Two
 corollaries matter in practice.  First, the all-zero state is the unique
 fixed point and must never be used --- one reason \texttt{ps\_rng\_seed()}
 runs every seed through splitmix64 rather than loading it directly.

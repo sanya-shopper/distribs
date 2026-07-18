@@ -23,6 +23,7 @@ into the *t*-test.
 | `docs/probsim.pdf`      | Built copy of the paper, served alongside the site              | —             |
 | `refs/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
 | `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `refs/`           | —             |
+| `scripts/charpoly.py`   | Derives & certifies the RNG's primitive characteristic polynomial | paper §2.2  |
 
 Each source file carries comments pointing back to the section of the paper
 that explains it, and the paper cites the implementing function for every
