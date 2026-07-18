@@ -21,6 +21,8 @@ canonical sources keeps the repo small and the provenance clean.)
 | `blackman-vigna-xoshiro.pdf`       | Blackman & Vigna 2021 (`blackman2021xoshiro`) | open access, arXiv:1805.01407 |
 | `oneill-pcg-2014.pdf`              | O'Neill 2014 (`oneill2014pcg`) | free technical report, Harvey Mudd College |
 | `marsaglia-2003-xorshift.pdf`      | Marsaglia 2003 (`marsaglia2003xorshift`) | open access, Journal of Statistical Software |
+| `bayes-1763.pdf`                   | Bayes 1763 (`bayes1763`)       | open access, Royal Society |
+| `wilks-1938.pdf`                   | Wilks 1938 (`wilks1938`)       | open access, Project Euclid |
 | —                                  | L'Ecuyer & Simard 2007 (`lecuyer2007testu01`) | paywalled (ACM TOMS); cited by DOI |
 | —                                  | Vigna 2016 (`vigna2016xorshift`) | paywalled (ACM TOMS); preprint arXiv:1402.6246 |
 | —                                  | PractRand (`dotyhumphrey_practrand`) | software; cited by URL |

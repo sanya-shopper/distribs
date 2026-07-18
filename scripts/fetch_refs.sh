@@ -53,4 +53,12 @@ fetch oneill-pcg-2014.pdf \
 fetch marsaglia-2003-xorshift.pdf \
     "https://www.jstatsoft.org/index.php/jss/article/view/v008i14/xorshift.pdf"
 
+# Bayes (1763) — open access at the Royal Society (paper §4.5 history).
+fetch bayes-1763.pdf \
+    "https://royalsocietypublishing.org/doi/pdf/10.1098/rstl.1763.0053"
+
+# Wilks (1938) — open access at Project Euclid (paper §4.6 history).
+fetch wilks-1938.pdf \
+    "https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-9/issue-1/The-Large-Sample-Distribution-of-the-Likelihood-Ratio-for-Testing/10.1214/aoms/1177732360.pdf"
+
 echo "done."

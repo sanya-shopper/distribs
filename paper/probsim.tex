@@ -402,6 +402,22 @@ Almost all of \emph{binary-outcome} inference --- estimating a proportion,
 comparing two proportions, logistic regression --- is Bernoulli modeling.
 Simulation is the definition itself: draw $U$ and report whether $U<p$.
 
+\paragraph{Origins and habitat.}
+The distribution carries the name of Jacob Bernoulli, whose posthumous
+\emph{Ars Conjectandi} \citep{bernoulli1713} proved the first law of large
+numbers --- his ``golden theorem'' that the observed frequency of successes
+converges to $p$ --- and thereby turned the coin toss from a gambling prop
+into the founding object of mathematical statistics.  The model arises
+naturally wherever an outcome is \emph{recorded} as a dichotomy, which is a
+choice as much as a fact of nature: cure/no cure, click/no click,
+default/no default.  Its independence-plus-constant-$p$ idealisation is
+what everything downstream inherits, so the practical craft lies in
+checking it --- runs of correlated outcomes or drifting $p$ break the
+binomial counts and waiting times built on top.  In modern practice the
+Bernoulli likelihood is the atom of logistic regression, of web-scale A/B
+platforms running thousands of simultaneous coin-flip experiments, and of
+the Beta--Bernoulli machinery of \S\ref{sec:beta}.
+
 \srcref{src/dist.c: ps\_bernoulli()}
 
 \subsection{Binomial}\label{sec:binomial}
@@ -424,6 +440,25 @@ exist \citep[ch.~X.4]{devroye1986} but buy speed with complexity we do not
 need.  Figure~\ref{fig:pmfs} (left) shows the worked example
 Binomial$(20, 0.25)$.
 
+\paragraph{Origins and habitat.}
+The binomial is probability theory's birth certificate.  The 1654
+Pascal--Fermat correspondence on the \emph{problem of points} --- how to
+split the stakes of an interrupted game --- amounted to computing binomial
+probabilities from Pascal's triangle, and \citet{bernoulli1713} supplied
+the general trials framework.  Most consequentially, \citet{demoivre1738}
+showed that for large $n$ the binomial is approximated by the curve
+$e^{-x^2}$: the first central limit theorem, and the historical doorway
+through which the normal distribution entered statistics
+(\S\ref{sec:normal}).  The model arises wherever a fixed number of like
+units each independently succeed or fail: Mendel's famous 3:1 pea ratios
+are binomial counts; industrial \emph{acceptance sampling} (developed by
+Dodge and Romig at Bell Laboratories in the 1920s--40s) decides a lot's
+fate from the binomial behaviour of a small inspected sample; election
+audits and A/B tests are the same calculation with different stakes.  The
+standard failure mode is \emph{overdispersion} --- $p$ varying between
+units inflates the variance beyond $np(1-p)$ --- which is the empirical
+signature that the Beta--binomial mixture of \S\ref{sec:beta} fits better.
+
 \srcref{src/dist.c: ps\_binomial(), ps\_binomial\_pmf()}
 
 \subsection{Geometric}\label{sec:geometric}
@@ -438,6 +473,22 @@ discrete twin of the exponential --- and indeed the sampler exploits
 exactly that: invert the geometric CDF with one uniform,
 $X=\lfloor \ln(1-U)/\ln(1-p)\rfloor$, which is the exponential inversion
 of \S\ref{sec:exponential} rounded down to a count.
+
+\paragraph{Origins and habitat.}
+``How many throws until the first six?'' is as old as dice questions get
+--- de M\'er\'e's puzzles that provoked the Pascal--Fermat correspondence
+were of exactly this waiting-time kind.  Two properties give the geometric
+its character.  It is provably the \emph{only} discrete distribution with
+the memoryless property, so it arises, exactly, whenever a repeated trial
+has a constant per-attempt hazard; and the everyday refusal to believe
+this --- ``red is due'' after a run of black --- is the gambler's fallacy,
+which makes the geometric the distribution most humans mis-intuit.  It
+appears naturally as retransmission counts in randomized network protocols
+(the backoff analyses behind ALOHA and Ethernet), as cycles-to-conception
+in demography's fecundability models, as the first defect's position in
+sequential inspection, and as discrete-time survival with constant hazard
+--- the null model against which real ageing or learning effects are
+measured.
 
 \srcref{src/dist.c: ps\_geometric(), ps\_geometric\_pmf()}
 
@@ -460,6 +511,26 @@ tests.  The library simulates it with Knuth's product-of-uniforms method
 drops below $e^{-\lambda}$ --- applied in chunks of rate at most 30 so the
 product never underflows; the chunking is valid because Poisson rates add.
 Figure~\ref{fig:pmfs} (right) shows Poisson$(4)$.
+
+\paragraph{Origins and habitat.}
+Poisson derived his limit in an 1837 treatise on the probability of
+criminal-jury verdicts, where it went largely unnoticed; it was
+\citet{bortkiewicz1898}, with his ``law of small numbers'', who made it
+famous --- his tabulation of deaths by horse kick across Prussian cavalry
+corps remains the canonical demonstration that rare-event counts follow
+the Poisson law with uncanny fidelity.  Two independent rediscoveries
+cemented its physical and industrial standing: Rutherford and Geiger's
+1910 alpha-particle counts matched Poisson predictions and helped
+establish the randomness of radioactive decay, while Erlang's 1909
+analysis of telephone-call arrivals at the Copenhagen exchange founded
+teletraffic theory and, with it, queueing.  The genesis condition is
+superposition: many independent sources, each unlikely to fire in any
+short interval, add up to Poisson counts --- which is why the model
+recurs for insurance claim frequencies, mutations along a genome,
+web-server request arrivals, and photons at a detector.  As with the
+binomial, real data often show variance exceeding the mean; that
+overdispersion, and the gamma-mixed Poisson (negative binomial) that
+absorbs it, is the standard second chapter of count modeling.
 
 \begin{figure}[htbp]
 \centering
@@ -515,6 +586,24 @@ empirically in \S\ref{sec:tests} --- and it underlies $p$-value histograms,
 false-discovery-rate methods, and simulation-based calibration.
 Simulation is one affine map of $U$.
 
+\paragraph{Origins and habitat.}
+The uniform is classical probability's silent axiom: Laplace's definition
+of probability as favourable cases over ``equally possible'' cases
+\citep{laplace1812} simply \emph{is} the discrete uniform, elevated by his
+principle of insufficient reason into the default model of ignorance ---
+a move philosophers have argued about ever since (equal in which
+parameterisation?).  Its modern career began at Los Alamos in the late
+1940s, when Ulam and von~Neumann turned streams of uniform pseudo-random
+digits into the Monte Carlo method, making the uniform a computational
+instrument rather than a modeling assumption --- the role it plays in
+every sampler of this library.  In data it arises as quantization and
+rounding error, as the phase at which an unsynchronized observer catches a
+cycle, and universally through the \emph{probability integral transform}:
+$F(X)\sim\mathrm{Uniform}(0,1)$ for any continuous $F$, the identity
+behind $p$-value uniformity, inverse-transform sampling
+(\S\ref{sec:uniform-enough}), and copula modeling, which separates each
+variable's margin from the dependence between them.
+
 \srcref{src/dist.c: ps\_uniform()}
 
 \subsection{Exponential}\label{sec:exponential}
@@ -531,6 +620,23 @@ ageing (or infant-mortality) effects are measured.  The sampler is the
 one-liner promised in Figure~\ref{fig:inverse}:
 $X=-\ln(1-U)/\lambda$.
 
+\paragraph{Origins and habitat.}
+The exponential earned physical reality around 1900, when Rutherford and
+Soddy found that radioactive decay follows an exact exponential law with a
+substance-specific half-life --- memorylessness measured in a laboratory.
+Mathematically it is welded to the Poisson process: exponential
+inter-arrival times and Poisson counts are two descriptions of the same
+object, so Erlang's telephone traffic and every queueing model since carry
+it as the default clock.  Like its discrete twin, it is provably the
+\emph{only} continuous memoryless distribution, and it is closed under
+competing risks --- the minimum of independent exponentials is exponential
+with the rates summed --- which is why systems of many independent failure
+modes look exponential in their prime of life.  Post-war reliability
+engineering built its handbooks on exactly that constant-hazard middle of
+the ``bathtub curve'', and modern survival analysis still starts from the
+exponential as the null against which ageing (Weibull), frailty, and cure
+models are judged.
+
 \srcref{src/dist.c: ps\_exponential(), ps\_exponential\_cdf()}
 
 \subsection{Normal}\label{sec:normal}
@@ -545,6 +651,29 @@ sample means all look Gaussian, and why the normal is the default model
 for noise in regression and the reference distribution for estimators.
 Essentially all of \S\ref{sec:inference} exists to make small-sample
 corrections to normal-based reasoning.
+
+\paragraph{Origins and habitat.}
+No distribution has a richer pedigree.  \citet{demoivre1738} found the
+curve as the large-$n$ limit of the binomial; \citet{gauss1809} derived it
+as the error law under which the arithmetic mean is the best estimate,
+founding least squares in the process (hence \emph{Gaussian}); Laplace's
+1810 central limit theorem explained \emph{why} it appears --- sums of
+many small independent contributions converge to it almost regardless of
+their individual laws \citep{laplace1812}.  The nineteenth century then
+watched it colonise the empirical world: Quetelet fit it to human chest
+measurements and birthed social statistics' ``average man'' (1835),
+Maxwell derived it for molecular velocities (1860), and Galton's quincunx
+made the mechanism visible in falling beads; the now-standard name
+``normal'' spread through Galton and Pearson late in the century ---
+a naming historians note is unfortunately value-laden.  Its natural
+habitats are exactly the CLT's: measurement errors built from many small
+disturbances, biological traits summing many genetic and environmental
+effects, diffusive displacements (Einstein's 1905 Brownian-motion
+analysis), and averages of almost anything.  The perennial caution is in
+the tails: the CLT speaks about the middle of the distribution, and
+real-world extremes --- finance above all --- are routinely heavier than
+Gaussian, which is one job Student's $t$ (\S\ref{sec:studentt}) takes
+over.
 
 $F^{-1}$ has no closed form, so inversion is unavailable; instead the
 library uses the polar variant of the Box--Muller transform
@@ -618,6 +747,26 @@ discrepancy with a rejection step that accepts well over 95\% of
 proposals.  Shapes $k<1$ (where the density blows up at zero) are handled
 by a classical boost: draw at shape $k+1$ and multiply by $U^{1/k}$.
 
+\paragraph{Origins and habitat.}
+The name comes from Euler's gamma function (1729), which normalises the
+density; as a \emph{statistical} family it entered through Karl Pearson's
+1890s system of skew curves (his Type~III), built to fit the asymmetric
+histograms — income, rainfall, biometry — that the normal manifestly
+could not.  Erlang independently arrived at the integer-shape case in
+1909 as the duration of $k$ successive telephone holding times, and
+``Erlang distribution'' survives in queueing to this day.  The genesis
+mechanism is accumulation of positive quantities: total rainfall from
+many showers (the gamma is hydrology's standard wet-day model), aggregate
+insurance losses, hospital lengths of stay, neuronal inter-spike
+intervals built from sub-threshold steps.  Two structural roles keep it
+central to inference: it is the variance-component distribution behind
+\S\ref{sec:chisq}, and in Bayesian statistics it is the conjugate prior
+for Poisson and exponential rates --- a pairing systematised in the
+conjugate-family framework of \citet{raiffa1961} --- so that posterior
+inference about ``how often'' questions is, computationally, gamma
+sampling; the gamma-mixed Poisson also yields the negative binomial, the
+workhorse fix for the overdispersed counts of \S\ref{sec:poisson}.
+
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
@@ -660,6 +809,29 @@ Beta$(k,\,n{-}k{+}1)$.  The sampler uses the classical gamma
 representation: $X=G_1/(G_1+G_2)$ with independent
 $G_1\sim\mathrm{Gamma}(a,1)$, $G_2\sim\mathrm{Gamma}(b,1)$.
 
+\paragraph{Origins and habitat.}
+The beta is the oldest posterior in statistics.  Thomas Bayes's essay
+\citep{bayes1763}, published posthumously by Richard Price, posed the
+inverse problem --- given observed successes and failures, what is the
+chance itself? --- through his billiard-table thought experiment, and the
+answer he computed is exactly the Beta$(s{+}1, f{+}1)$ update this
+section's demo performs; Laplace, independently, integrated the same
+distribution to obtain his rule of succession (1774), the first published
+formula for learning a probability from data.  Pearson later absorbed it
+as Type~I of his curve system.  It arises naturally three ways: as the
+law of an unknown proportion, as the $k$-th order statistic of $n$
+uniforms (so ranks, quantile estimates and records lead to it), and as
+the share $G_1/(G_1{+}G_2)$ of a gamma-distributed total --- whence its
+multivariate sibling, the Dirichlet.  Its application history has a
+distinctly modern arc: \citet{thompson1933} proposed allocating
+treatments by sampling from exactly this posterior, an idea that lay
+dormant for decades before returning as \emph{Thompson sampling}, the
+algorithm inside contemporary bandit systems for ad serving, recommender
+exploration and adaptive clinical trials; the 1950s PERT method of
+project management adopted the beta for task durations, and empirical
+Bayes shrinkage of batting averages and hospital rates is Beta--binomial
+reasoning at scale.
+
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
@@ -699,6 +871,26 @@ independence tests, and the asymptotic null distribution of
 likelihood-ratio statistics (Wilks' theorem) --- which makes $\chi^2$
 tail areas the common currency of model comparison.
 
+\paragraph{Origins and habitat.}
+The distribution was first derived by the geodesist Friedrich Helmert
+(1876) while studying the sample variance of normal observations ---
+surveying error analysis, not statistics, was the motivating problem.
+Its second birth was \citet{pearson1900}: the goodness-of-fit criterion
+$\sum (O-E)^2/E$, routinely listed among the most consequential papers in
+the history of science, because for the first time it let an
+experimenter ask, quantitatively, ``does this model fit these data?''
+The famous 1922 dispute in which Fisher corrected Pearson's degrees of
+freedom for contingency tables --- estimate parameters, lose degrees ---
+both fixed the practice and forged the modern concept of degrees of
+freedom.  \citet{wilks1938} then made the $\chi^2$ universal: twice the
+log likelihood ratio converges to it under the null, so every nested
+model comparison ultimately cashes out in $\chi^2$ tail areas.  In
+nature it appears wherever squared magnitudes of isotropic noise
+accumulate: the kinetic energy of an ideal-gas molecule is a scaled
+$\chi^2_3$ (Maxwell), and the squared length of any $k$-dimensional
+Gaussian error vector --- radar returns, portfolio residuals --- is
+$\chi^2_k$ by definition.
+
 \srcref{src/dist.c: ps\_chi\_squared(), ps\_chi\_squared\_cdf()}
 
 \subsection{Student's t}\label{sec:studentt}
@@ -723,6 +915,27 @@ it a workhorse \emph{model} in its own right: robust regression replaces
 normal errors with $t$ errors so outliers stop dragging the fit, and
 finance uses $t$ innovations because asset returns produce extreme moves
 far more often than a Gaussian allows.
+
+\paragraph{Origins and habitat.}
+The backstory rewards telling.  Gosset worked at Guinness on barley and
+hops experiments whose samples were unavoidably tiny, and large-sample
+normal theory visibly failed them; company policy forbade employees to
+publish (a rival brewery had been embarrassed by a leaked article), so
+his solution appeared under the pseudonym ``Student''.  The 1908 paper is
+also an early landmark of \emph{simulation}: to check his curve, Gosset
+drew 750 samples of size four --- by shuffling cards --- from Macdonell's
+anthropometric measurements of 3{,}000 convicts, a Monte Carlo experiment
+four decades before the name existed.  The result was rigorous but
+little used until Fisher supplied a clean derivation, extended it to
+regression coefficients, and built his 1925 handbook around tabulated
+$t$ \citep{fisher1925}, turning small-sample exactness into everyday
+laboratory practice.  Beyond testing, the $t$ arises naturally as a
+\emph{scale mixture} of normals --- a Gaussian whose unknown variance is
+itself random --- which is precisely why it suits populations that are
+normal-with-heterogeneous-precision: measurement series with occasional
+sloppy runs, asset returns alternating between calm and turbulent
+regimes, and any Bayesian analysis where integrating out an unknown
+variance turns a normal likelihood into a $t$ predictive.
 
 \begin{figure}[htbp]
 \centering
@@ -763,6 +976,26 @@ variance \emph{within} groups?), the overall significance test of a
 regression, and nested-model comparisons.  Two connections knit the
 family shut: $t_\nu^2 = F_{1,\nu}$ (squaring a $t$-test gives an
 $F$-test), and ANOVA with two groups is exactly the pooled $t$-test.
+
+\paragraph{Origins and habitat.}
+The $F$ is the youngest of the family and the most deliberately
+engineered.  Fisher developed the analysis of variance in the 1920s at
+Rothamsted Experimental Station, where decades of agricultural field
+trials --- plots of wheat under different manures, varieties and years
+--- demanded a way to split observed variation into components and judge
+which differences exceeded chance; his 1925 handbook \citep{fisher1925}
+and the later \emph{Design of Experiments} (1935) wrapped the variance
+ratio in the trio that still defines good experimentation: randomization,
+replication, and blocking.  Fisher himself worked with
+$z=\tfrac12\ln F$; George Snedecor's 1934 tables at Iowa State
+popularised the untransformed ratio and named it $F$ in Fisher's honour.
+It arises wherever two independent estimates of noise compete: signal
+variance against residual variance in ANOVA and regression, a smaller
+model's leftover error against a larger model's in nested comparisons,
+and channel power against background in variance-ratio detectors.  Its
+$t^2 = F_{1,\nu}$ identity is the formal statement that the $t$-test is
+one-factor ANOVA in miniature --- the whole classical testing toolkit
+is, in the end, ratios of chi-squareds.
 
 \srcref{src/dist.c: ps\_f(), ps\_f\_cdf()}
 

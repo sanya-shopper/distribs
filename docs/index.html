@@ -177,6 +177,11 @@ footer .inner { max-width: 960px; margin: 0 auto; }
   font-size: 13.5px; color: var(--ink2); background: var(--blue-soft);
   border-radius: 8px; padding: 10px 14px; max-width: 52em;
 }
+p.hist {
+  font-size: 13.5px; color: var(--ink2); max-width: 52em;
+  border-left: 3px solid var(--grid); padding-left: 12px; margin: 10px 0;
+}
+p.hist b { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -245,6 +250,16 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     the CDF, and lands on the horizontal axis — where the curve is steep, the
     landings crowd together, and the histogram grows into an exponential
     density.
+  </p>
+  <p class="hist">
+    <b>Where they come from:</b> the uniform is classical probability's
+    silent axiom — Laplace's "equally possible cases" (1812) — reborn at
+    Los Alamos in the 1940s when Ulam and von Neumann made uniform digits
+    the fuel of the Monte Carlo method.  The exponential became physically
+    real when Rutherford and Soddy (c. 1900) found radioactive decay obeys
+    it exactly; it is provably the <em>only</em> memoryless continuous law,
+    the clock of every Poisson process, and the constant-hazard baseline of
+    reliability and survival analysis.
   </p>
   <div class="viz"><canvas id="cv-inverse" height="360"></canvas></div>
   <div class="controls">
@@ -327,6 +342,10 @@ footer .inner { max-width: 960px; margin: 0 auto; }
   <div class="grid2">
     <div>
       <h3 id="binomial">Binomial(n, p)</h3>
+      <p class="hist"><b>History:</b> born in the 1654 Pascal–Fermat
+        letters on splitting interrupted stakes; de Moivre (1733) found
+        the bell curve hiding in it — the first CLT.  Mendel's 3:1 pea
+        ratios and Bell Labs' acceptance sampling are binomial counts.</p>
       <div class="viz"><canvas id="cv-binom" height="230"></canvas></div>
       <div class="controls">
         <label>n <input type="range" id="bin-n" min="1" max="40" step="1" value="20">
@@ -338,6 +357,11 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     </div>
     <div>
       <h3 id="poisson">Poisson(λ)</h3>
+      <p class="hist"><b>History:</b> derived by Poisson (1837) for jury
+        verdicts, made famous by Bortkiewicz's horse-kick deaths in the
+        Prussian cavalry (1898), then confirmed twice over: Erlang's
+        telephone arrivals (1909) and Rutherford–Geiger's alpha-particle
+        counts (1910).</p>
       <div class="viz"><canvas id="cv-pois" height="230"></canvas></div>
       <div class="controls">
         <label>λ <input type="range" id="poi-lam" min="0.5" max="20" step="0.5"
@@ -347,6 +371,10 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     </div>
     <div>
       <h3 id="geometric">Geometric(p)</h3>
+      <p class="hist"><b>History:</b> "how many throws until the first
+        six?" is as old as dice.  The only memoryless discrete law — the
+        gambler's fallacy is the refusal to believe it.  Today: network
+        retransmissions, cycles-to-conception, first-defect inspection.</p>
       <div class="viz"><canvas id="cv-geom" height="230"></canvas></div>
       <div class="controls">
         <label>p <input type="range" id="geo-p" min="0.05" max="0.9" step="0.01"
@@ -363,6 +391,11 @@ footer .inner { max-width: 960px; margin: 0 auto; }
         <em>n</em>→∞ limit of rare Bernoullis.  In the library the sampler is
         one comparison: <code>ps_runif(rng) &lt; p</code>.
       </p>
+      <p class="hist"><b>History:</b> named for Jacob Bernoulli, whose
+        <em>Ars Conjectandi</em> (1713) proved the first law of large
+        numbers — the "golden theorem" that frequencies converge to
+        <em>p</em> — and made the coin toss the founding object of
+        statistics.</p>
       <p class="readout" id="bern-read"></p>
       <div class="controls">
         <button id="bern-flip">flip 100 coins (p = 0.3)</button>
@@ -386,6 +419,13 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     into a perfect bell curve (Box &amp; Muller 1958).  Press play and watch
     the histogram on the right converge to <em>N</em>(0,1).
   </p>
+  <p class="hist"><b>History:</b> de Moivre found the curve inside the
+    binomial (1733); Gauss tied it to least squares as the law of errors
+    (1809, hence "Gaussian"); Laplace's CLT (1810) explained its
+    universality; Quetelet fit it to people (1835), Maxwell to molecules
+    (1860).  The name "normal" spread via Galton and Pearson.  Caution
+    lives in the tails — real extremes, finance above all, are heavier
+    than Gaussian.</p>
   <div class="viz"><canvas id="cv-polar" height="300"></canvas></div>
   <div class="controls">
     <button id="pol-play">play</button>
@@ -405,6 +445,12 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     the conjugate prior for Poisson and exponential rates — and the raw
     material for beta, chi-squared, <em>t</em> and <em>F</em> below.
   </p>
+  <p class="hist"><b>History:</b> Euler's function (1729) became a
+    statistical family in Karl Pearson's skew-curve system (1890s, Type
+    III); the integer-shape case is Erlang's telephone-holding-time law
+    (1909).  Hydrology's standard rainfall model, insurance's aggregate
+    loss, and — via Raiffa &amp; Schlaifer's conjugate families (1961) —
+    the Bayesian prior for every "how often?" question.</p>
   <div class="viz"><canvas id="cv-gamma" height="260"></canvas></div>
   <div class="controls">
     <label>shape k <input type="range" id="gam-k" min="0.3" max="10" step="0.1"
@@ -426,6 +472,13 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     success and <em>a</em> gains one; observe a failure and <em>b</em> does.
     Watch certainty sharpen as evidence accumulates.
   </p>
+  <p class="hist"><b>History:</b> the oldest posterior in statistics —
+    Bayes's 1763 essay computed exactly this update for an unknown chance
+    (his billiard-table thought experiment), and Laplace's rule of
+    succession (1774) integrated it.  Thompson proposed sampling from it
+    to allocate treatments in 1933; the idea slept for decades and woke up
+    as the Thompson-sampling bandits inside modern ad and recommender
+    systems.</p>
   <div class="viz"><canvas id="cv-beta" height="260"></canvas></div>
   <div class="controls">
     <label>a <input type="range" id="bet-a" min="0.3" max="12" step="0.1" value="2">
@@ -447,6 +500,12 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     variance in a normal sample, the engine of goodness-of-fit tests, and the
     denominator of the <em>t</em> statistic.
   </p>
+  <p class="hist"><b>History:</b> derived by the geodesist Helmert (1876)
+    for surveying errors, then made universal by Pearson's goodness-of-fit
+    criterion (1900) — among the most consequential papers in science.
+    Fisher's 1922 degrees-of-freedom correction forged the modern df
+    concept; Wilks (1938) put χ² under every likelihood-ratio test.  In
+    nature: a gas molecule's kinetic energy is a scaled χ²₃.</p>
   <div class="viz"><canvas id="cv-chi" height="240"></canvas></div>
   <div class="controls">
     <label>df k <input type="range" id="chi-k" min="1" max="15" step="1" value="6">
@@ -466,6 +525,13 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     shows how much more tail probability lies beyond ±1.96 than the normal's
     5% — exactly why small samples demand bigger effects.
   </p>
+  <p class="hist"><b>History:</b> W. S. Gosset solved Guinness's
+    small-sample barley problem in 1908 under the pseudonym "Student"
+    (the brewery forbade publishing) — and checked his curve by shuffling
+    cards through 750 samples of convict measurements, a Monte Carlo forty
+    years early.  Fisher's 1925 handbook and tables made it standard
+    practice.  As a scale mixture of normals it also models honest
+    heavy-tailed data: lab runs of varying care, markets of varying calm.</p>
   <div class="viz"><canvas id="cv-t" height="260"></canvas></div>
   <div class="controls">
     <label>df ν <input type="range" id="t-nu" min="1" max="30" step="1" value="3">
@@ -484,6 +550,12 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     <em>t</em>²<sub>ν</sub> = <em>F</em><sub>1,ν</sub>, and two-group ANOVA
     <em>is</em> the pooled <em>t</em>-test.
   </p>
+  <p class="hist"><b>History:</b> Fisher built the analysis of variance
+    at Rothamsted's agricultural trials in the 1920s (randomize,
+    replicate, block); he used z = ½ ln F, and Snedecor's 1934 tables
+    named the plain ratio F in his honour.  Every ANOVA in agronomy,
+    psychology and industry — and every regression's overall F — descends
+    from those wheat plots.</p>
   <div class="viz"><canvas id="cv-f" height="240"></canvas></div>
   <div class="controls">
     <label>d₁ <input type="range" id="f-d1" min="1" max="20" step="1" value="5">
@@ -608,6 +680,19 @@ footer .inner { max-width: 960px; margin: 0 auto; }
     <li>Knuth (1997), <em>TAOCP vol. 2: Seminumerical Algorithms</em>, 3rd ed.</li>
     <li>Press et al. (1992), <em>Numerical Recipes in C</em>, 2nd ed., §6.2–6.4.</li>
   </ul>
+  <p style="font-size:14px; color:var(--ink2)">
+    The "Origins and habitat" notes throughout this site and the paper
+    also draw on the historical originals: Bernoulli's <em>Ars
+    Conjectandi</em> (1713), de Moivre's <em>Doctrine of Chances</em>
+    (1738), <a href="https://doi.org/10.1098/rstl.1763.0053">Bayes
+    (1763)</a>, Gauss (1809), Laplace (1812), Bortkiewicz (1898),
+    <a href="https://doi.org/10.1080/14786440009463897">Pearson (1900)</a>,
+    Fisher's <em>Statistical Methods for Research Workers</em> (1925),
+    <a href="https://doi.org/10.1093/biomet/25.3-4.285">Thompson (1933)</a>,
+    <a href="https://doi.org/10.1214/aoms/1177732360">Wilks (1938)</a>,
+    and Raiffa &amp; Schlaifer (1961) — full details in the paper's
+    bibliography.
+  </p>
   <p class="xref"><b>Full bibliography with DOIs:</b> paper, final pages —
     <a href="probsim.pdf">PDF</a></p>
 </section>
