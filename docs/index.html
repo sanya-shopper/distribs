@@ -126,6 +126,16 @@ p.xref {
 p.xref b { color: var(--ink2); font-weight: 600; }
 .viz { margin: 14px 0 4px; }
 .viz canvas, .viz svg { display: block; width: 100%; height: auto; }
+/* Wide diagrams pan horizontally on phones instead of shrinking to
+   illegibility (family tree). */
+.viz.scrollx { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.viz.scrollx svg { min-width: 720px; }
+.scrollhint { display: none; font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+@media (max-width: 760px) {
+  .scrollhint { display: block; }
+  .hero h1 { font-size: 27px; }
+  section.panel { padding: 16px 14px 12px; }
+}
 .controls {
   display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
   font-size: 13px; color: var(--ink2); margin: 8px 0 2px;
@@ -210,12 +220,13 @@ footer .inner { max-width: 960px; margin: 0 auto; }
   <p>
     Every sampler in the library is manufactured from uniform random bits, and
     every arrow below is literally a line or two of C in
-    <code data-code="src/dist.c">src/dist.c</code>.  <strong>Hover</strong> a
-    distribution to see where it comes from; <strong>click</strong> to jump to
-    its panel.
+    <code data-code="src/dist.c">src/dist.c</code>.  <strong>Hover or
+    tap</strong> a distribution to see where it comes from;
+    <strong>click</strong> to jump to its panel.
   </p>
-  <div class="viz"><svg id="familytree" viewBox="0 0 920 470"
+  <div class="viz scrollx"><svg id="familytree" viewBox="0 0 920 470"
        role="img" aria-label="Family tree of the classical distributions"></svg></div>
+  <p class="scrollhint">↔ swipe the diagram sideways to see the whole family</p>
   <p class="xref"><b>Paper:</b> Figure 1 &amp; §1 —
     <a href="probsim.pdf">PDF</a> · <b>Code:</b>
     <a data-code="src/dist.c"><code>src/dist.c</code></a></p>
@@ -1000,7 +1011,8 @@ function slider(id, digits, fn) {
                       ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(hgt));
     });
     ch.curve(F, cssv('--blue'));
-    ch.label(`F(x) = 1 − e^(−${fmt(lam, 1)}x)`, XMAX * 0.55, 0.93,
+    /* top-left is clear of the curve for every λ on this slider */
+    ch.label(`F(x) = 1 − e^(−${fmt(lam, 1)}x)`, XMAX * 0.04, 1.0,
              cssv('--blue'));
     if (total)
       ch.label('landings (histogram)', XMAX * 0.55, 0.10, cssv('--muted'));
@@ -1097,15 +1109,18 @@ function pmfPanel(cvId, readId, opts) {
       $(readId).textContent = opts.moments(params);
     }
   }
-  cv.addEventListener('mousemove', ev => {
+  /* pointer events so a tap on a touch screen also reads out a stem */
+  const probe = ev => {
     const rect = cv.getBoundingClientRect();
     const kmax = pts().length - 1;
     const frac = (ev.clientX - rect.left - 40) / (rect.width - 52);
     const k = Math.round(-0.7 + frac * (kmax + 1.4));
     hoverK = (k >= 0 && k <= kmax) ? k : null;
     draw();
-  });
-  cv.addEventListener('mouseleave', () => { hoverK = null; draw(); });
+  };
+  cv.addEventListener('pointermove', probe);
+  cv.addEventListener('pointerdown', probe);
+  cv.addEventListener('pointerleave', () => { hoverK = null; draw(); });
   opts.wire(v => { params = v; draw(); }, () => params);
   onRedraw(draw);
 }
@@ -1248,7 +1263,8 @@ pmfPanel('cv-geom', 'geo-read', {
     if (accepted) {
       ctx.fillStyle = cssv('--blue-soft');
       hist.forEach((c, i) => {
-        const dens = c / accepted / binw;
+        /* clamp: with few samples an empirical bin can exceed the frame */
+        const dens = Math.min(c / accepted / binw, 0.46);
         const x0 = Xz(-ZMAX + i * binw);
         ctx.fillRect(x0 + 0.5, Yd(dens), gw / BINS - 1, gy - Yd(dens));
       });
@@ -1467,8 +1483,8 @@ function densityPanel(cvId, h, getState, spec) {
     ctx.fillStyle = cssv('--muted'); ctx.font = '11px system-ui, sans-serif';
     ctx.textAlign = 'center';
     niceTicks(xlo, xhi, 8).forEach(v => ctx.fillText(String(v), SX(v), sy + 14));
-    ctx.textAlign = 'left';
-    ctx.fillText('the simulated sample', sx0, 12);
+    ctx.textAlign = 'right';
+    ctx.fillText('the simulated sample', sx1, 12);
     /* H0 line, labelled on its left so the sample-mean label owns the right */
     ctx.strokeStyle = cssv('--muted'); ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(SX(MU0), sy - 34); ctx.lineTo(SX(MU0), sy + 4);
@@ -1522,8 +1538,8 @@ function densityPanel(cvId, h, getState, spec) {
     ctx.stroke();
     ctx.fillStyle = cssv('--blue'); ctx.textAlign = 'left';
     ctx.fillText(`null density  t(${fmt(df, 0)})`, X(-4.8), Y(0.40));
-    ctx.fillStyle = cssv('--red');
-    ctx.fillText(`5% rejection region beyond ±${fmt(crit, 2)}`, X(1.0), Y(0.40));
+    ctx.fillStyle = cssv('--red'); ctx.textAlign = 'right';
+    ctx.fillText(`5% rejection region beyond ±${fmt(crit, 2)}`, X(4.9), Y(0.40));
     if (result) {
       const tx = Math.max(-4.9, Math.min(4.9, result.t));
       ctx.strokeStyle = cssv('--red'); ctx.lineWidth = 2.2;
@@ -1557,7 +1573,8 @@ function densityPanel(cvId, h, getState, spec) {
       ch.ctx.moveTo(ch.X(0), ch.Y(exp400));
       ch.ctx.lineTo(ch.X(1), ch.Y(exp400));
       ch.ctx.stroke(); ch.ctx.setLineDash([]);
-      ch.label('uniform reference', 0.72, exp400 * 1.1, cssv('--blue'));
+      ch.label('uniform reference', 0.98, exp400 * 1.1, cssv('--blue'),
+               'right');
       ch.label('p-values from 400 simulated tests', 0.02,
                Math.max(...pvals) * 1.02, cssv('--ink2'));
     }
