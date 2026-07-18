@@ -19,7 +19,8 @@ into the *t*-test.
 | `tests/test_probsim.c`  | Unit tests: CDF spot values, moment checks, *t*-test fixtures   | paper §6      |
 | `docs/probsim.tex`      | Companion paper (LaTeX)                                         | —             |
 | `docs/references.bib`   | Bibliography (BibTeX)                                           | —             |
-| `refs/`                 | Local copies of open-access reference PDFs, where available     | —             |
+| `refs/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
+| `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `refs/`           | —             |
 
 Each source file carries comments pointing back to the section of the paper
 that explains it, and the paper cites the implementing function for every
@@ -32,6 +33,7 @@ make            # builds libprobsim.a and the `simulate` driver
 make test       # builds and runs the unit tests
 make run        # runs the driver (simulation report + t-test demos)
 make docs       # builds docs/probsim.pdf (needs texlive + latexmk)
+make fetch-refs # downloads open-access reference PDFs into refs/
 make clean
 ```
 

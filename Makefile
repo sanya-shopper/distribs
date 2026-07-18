@@ -10,7 +10,7 @@ LIB_SRCS = src/rng.c src/special.c src/dist.c src/stats.c
 LIB_OBJS = $(LIB_SRCS:.c=.o)
 LIB      = libprobsim.a
 
-.PHONY: all test run docs clean
+.PHONY: all test run docs fetch-refs clean
 
 all: simulate test_probsim
 
@@ -36,6 +36,10 @@ run: simulate
 # docs/references.bib; local PDFs of open-access references live in refs/.
 docs:
 	cd docs && latexmk -pdf -bibtex -interaction=nonstopmode probsim.tex
+
+# Local PDFs of the open-access references (see refs/README.md).
+fetch-refs:
+	sh scripts/fetch_refs.sh
 
 clean:
 	rm -f $(LIB_OBJS) app/simulate.o tests/test_probsim.o $(LIB) simulate test_probsim
