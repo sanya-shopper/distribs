@@ -4,7 +4,10 @@
 % bearing: the C sources cite them (e.g. src/dist.c refers to "paper §4.4"),
 % and this paper cites the implementing file and function for everything it
 % explains.  If you renumber sections, grep the sources for "paper" and fix
-% the comments — README.md holds the master map.
+% the comments — README.md holds the master map.  The interactive web
+% edition (docs/index.html) mirrors these sections too: keep its panel
+% anchors in sync with the \webfig tags below, and re-copy the built PDF
+% to docs/probsim.pdf after `make docs` (see README.md, "Web version").
 \documentclass[11pt]{article}
 
 \usepackage[a4paper,margin=2.6cm]{geometry}
@@ -71,6 +74,13 @@
   \par\smallskip\noindent{\small\sffamily\color{inkS}%
   $\hookrightarrow$ implemented in \texttt{#1}}\par\smallskip}
 
+% The interactive web edition (docs/index.html, served via GitHub Pages).
+% UPDATE THIS after publishing: replace YOURUSER with your GitHub user.
+\newcommand{\siteurl}{https://YOURUSER.github.io/probsim/}
+% Tag for figure captions whose web counterpart is animated/interactive.
+\newcommand{\webfig}[1]{{\small\sffamily\color{inkS}%
+  [\href{\siteurl\##1}{interactive version on the web}]}}
+
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Var}{\operatorname{Var}}
 
@@ -95,7 +105,11 @@ connected family (Figure~\ref{fig:family}): every sampler is built from
 uniform bits, and the family funnels naturally into Student's $t$, whose
 tail areas turn simulated or observed data into $p$-values.  Every section
 names the source file and function that implements it, and the sources cite
-these sections back, so paper and code can be read side by side.
+these sections back, so paper and code can be read side by side.  This
+paper also has \href{\siteurl}{an interactive web edition}
+(\texttt{docs/index.html}, served via GitHub Pages) with every figure
+animated --- each figure caption below links to its interactive
+counterpart.
 \end{abstract}
 
 \section{Introduction}\label{sec:intro}
@@ -166,7 +180,7 @@ distributions grow along the left (\S\ref{sec:discrete}),
 \textcolor{sBlue}{continuous} ones along the right (\S\ref{sec:continuous}),
 and the family funnels into the \textcolor{cRed}{$t$-tests} of
 \S\ref{sec:inference}.  Each arrow is literally a line or two of C in
-\texttt{src/dist.c}.}
+\texttt{src/dist.c}.\ \webfig{family}}
 \label{fig:family}
 \end{figure}
 
@@ -247,7 +261,7 @@ all three techniques is \citet{devroye1986}.
 \caption{Inverse-transform sampling: a uniform draw on the vertical axis is
 pushed through $F^{-1}$ to land on the horizontal axis with density exactly
 $F'$.  Regions where $F$ rises steeply receive more of the uniform mass ---
-that is the whole trick.}
+that is the whole trick.\ \webfig{uniform-bits}}
 \label{fig:inverse}
 \end{figure}
 
@@ -360,7 +374,7 @@ Figure~\ref{fig:pmfs} (right) shows Poisson$(4)$.
 \caption{The two classical count laws, at the driver's worked parameters.
 Both have mean $\approx 4$--$5$, but the binomial is confined to
 $\{0,\dots,20\}$ while the Poisson has an unbounded right tail --- the
-visible signature of ``many opportunities, each rare''.}
+visible signature of ``many opportunities, each rare''.\ \webfig{discrete}}
 \label{fig:pmfs}
 \end{figure}
 
@@ -458,7 +472,7 @@ declines.}
 kept only if they land in the disc; the kept point's radius and direction
 are then reshaped into a standard normal.  Rejection turns an easy
 distribution (uniform on a square) into a hard one (uniform on a disc)
-at a known, modest cost.}
+at a known, modest cost.\ \webfig{normal}}
 \label{fig:polar}
 \end{figure}
 
@@ -506,7 +520,8 @@ by a classical boost: draw at shape $k+1$ and multiply by $U^{1/k}$.
 \caption{Gamma densities with scale $\theta=1$.  Shape $k=1$ is the
 exponential; as $k$ grows the density moves right, symmetrizes, and (by
 the CLT, since it is a sum of $k$ waits) approaches a normal --- the
-family tree of Figure~\ref{fig:family} in a single picture.}
+family tree of Figure~\ref{fig:family} in a single picture.\
+\webfig{gamma}}
 \label{fig:gamma}
 \end{figure}
 
@@ -547,7 +562,7 @@ $G_1\sim\mathrm{Gamma}(a,1)$, $G_2\sim\mathrm{Gamma}(b,1)$.
 \caption{Beta densities: the driver's worked example Beta$(2,5)$ leans
 toward small proportions, its mirror Beta$(5,2)$ toward large ones,
 Beta$(2,2)$ is a symmetric hump, and Beta$(1,1)$ is the uniform ---
-the natural ``know nothing'' prior for a probability.}
+the natural ``know nothing'' prior for a probability.\ \webfig{beta}}
 \label{fig:beta}
 \end{figure}
 
@@ -613,7 +628,7 @@ far more often than a Gaussian allows.
 of freedom, the more probability escapes into the tails --- so small
 samples need larger observed effects before a result counts as
 surprising.  This gap between $t_\nu$ and $N(0,1)$ \emph{is} the
-small-sample correction of \S\ref{sec:inference}.}
+small-sample correction of \S\ref{sec:inference}.\ \webfig{studentt}}
 \label{fig:tvsn}
 \end{figure}
 
@@ -747,7 +762,8 @@ of the naive sum-of-squares formula.
 ($n=10$, $\mathrm{df}=9$).  Under $H_0$ the statistic follows the blue
 $t_9$ density; the shaded tails beyond $\pm t^{*}$ are the $5\%$ rejection
 region, and the observed $t=3.12$ lands past them, giving the two-sided
-$p$-value $0.012$ --- the total tail area beyond $\pm 3.12$.}
+$p$-value $0.012$ --- the total tail area beyond $\pm 3.12$.\
+\webfig{ttest}}
 \label{fig:rejection}
 \end{figure}
 
