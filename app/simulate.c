@@ -1,7 +1,7 @@
 /*
  * simulate.c — driver application for the probsim library.
  *
- * Walked through in the companion paper, docs/probsim.tex §6 ("The driver
+ * Walked through in the companion paper, paper/probsim.tex §6 ("The driver
  * and the tests").  Usage:
  *
  *     ./simulate [seed] [n]      (defaults: seed 20260718, n 200000)

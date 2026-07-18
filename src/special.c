@@ -1,7 +1,7 @@
 /*
  * special.c — the two special functions behind every classical test CDF.
  *
- * Explained in the companion paper, docs/probsim.tex §5.1 ("Two special
+ * Explained in the companion paper, paper/probsim.tex §5.1 ("Two special
  * functions carry all the tables").  Public interface: include/probsim.h.
  *
  * Almost every CDF a classical statistician needs — beta, gamma,

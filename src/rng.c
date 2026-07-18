@@ -1,7 +1,7 @@
 /*
  * rng.c — pseudo-random number generation for probsim.
  *
- * Explained in the companion paper, docs/probsim.tex §2 ("Where the
+ * Explained in the companion paper, paper/probsim.tex §2 ("Where the
  * randomness comes from").  Public interface: include/probsim.h.
  *
  * The generator is xoshiro256++ (Blackman & Vigna 2019; local copy at

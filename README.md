@@ -2,7 +2,7 @@
 
 A small, portable C99 library and driver application that simulates the major
 classical probability distributions, together with a typeset companion paper
-(`docs/probsim.tex` → `docs/probsim.pdf`) explaining what each distribution is
+(`paper/probsim.tex` → `paper/probsim.pdf`) explaining what each distribution is
 for in statistical inference and modeling, and how the whole family funnels
 into the *t*-test.
 
@@ -17,8 +17,8 @@ into the *t*-test.
 | `src/stats.c`           | Descriptive statistics (Welford), one-sample & Welch *t*-tests  | paper §5      |
 | `app/simulate.c`        | Driver: theoretical vs. empirical moments, *t*-test demos       | paper §6      |
 | `tests/test_probsim.c`  | Unit tests: CDF spot values, moment checks, *t*-test fixtures   | paper §6      |
-| `docs/probsim.tex`      | Companion paper (LaTeX)                                         | —             |
-| `docs/references.bib`   | Bibliography (BibTeX)                                           | —             |
+| `paper/probsim.tex`      | Companion paper (LaTeX)                                         | —             |
+| `paper/references.bib`   | Bibliography (BibTeX)                                           | —             |
 | `refs/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
 | `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `refs/`           | —             |
 
@@ -32,7 +32,7 @@ distribution it discusses, so you can read the two side by side.
 make            # builds libprobsim.a and the `simulate` driver
 make test       # builds and runs the unit tests
 make run        # runs the driver (simulation report + t-test demos)
-make docs       # builds docs/probsim.pdf (needs texlive + latexmk)
+make docs       # builds paper/probsim.pdf (needs texlive + latexmk)
 make fetch-refs # downloads open-access reference PDFs into refs/
 make clean
 ```

@@ -1,6 +1,6 @@
 #!/bin/sh
 # fetch_refs.sh — download local PDF copies of the open-access references
-# cited in docs/references.bib into refs/.
+# cited in paper/references.bib into refs/.
 #
 # Run from the repository root:   sh scripts/fetch_refs.sh
 #

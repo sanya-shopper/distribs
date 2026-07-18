@@ -1,7 +1,7 @@
 /*
  * test_probsim.c — unit tests for the probsim library.
  *
- * Described in the companion paper, docs/probsim.tex §6.3.  Run with
+ * Described in the companion paper, paper/probsim.tex §6.3.  Run with
  * `make test`.  Three layers of checking:
  *
  *   1. EXACT-ISH fixtures: CDF/pmf/pdf values and t-test results are

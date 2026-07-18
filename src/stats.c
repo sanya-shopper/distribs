@@ -2,7 +2,7 @@
  * stats.c — descriptive statistics and the t-tests that tie the
  * distribution family together.
  *
- * Explained in the companion paper, docs/probsim.tex §5 ("From
+ * Explained in the companion paper, paper/probsim.tex §5 ("From
  * distributions to inference: the t-test").  Public interface:
  * include/probsim.h.
  *

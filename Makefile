@@ -1,5 +1,5 @@
 # probsim — build the library, driver, tests, and the companion paper.
-# See README.md for an overview and docs/probsim.tex for the paper itself.
+# See README.md for an overview and paper/probsim.tex for the paper itself.
 
 CC      ?= gcc
 CFLAGS  ?= -std=c99 -Wall -Wextra -pedantic -O2
@@ -33,9 +33,9 @@ run: simulate
 	./simulate
 
 # The paper: LaTeX + BibTeX, driven by latexmk.  Bibliography sources live in
-# docs/references.bib; local PDFs of open-access references live in refs/.
+# paper/references.bib; local PDFs of open-access references live in refs/.
 docs:
-	cd docs && latexmk -pdf -bibtex -interaction=nonstopmode probsim.tex
+	cd paper && latexmk -pdf -bibtex -interaction=nonstopmode probsim.tex
 
 # Local PDFs of the open-access references (see refs/README.md).
 fetch-refs:
@@ -43,4 +43,4 @@ fetch-refs:
 
 clean:
 	rm -f $(LIB_OBJS) app/simulate.o tests/test_probsim.o $(LIB) simulate test_probsim
-	cd docs && latexmk -C probsim.tex 2>/dev/null || true
+	cd paper && latexmk -C probsim.tex 2>/dev/null || true

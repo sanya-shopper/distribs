@@ -3,7 +3,7 @@
  * distributions.
  *
  * Explained distribution-by-distribution in the companion paper,
- * docs/probsim.tex §3 (discrete) and §4 (continuous); each function below
+ * paper/probsim.tex §3 (discrete) and §4 (continuous); each function below
  * names its paper section.  Public interface: include/probsim.h.
  *
  * Design notes

@@ -6,7 +6,7 @@
  * (one-sample and Welch two-sample t-tests).
  *
  * The library is documented, distribution by distribution, in the companion
- * paper docs/probsim.tex (built to docs/probsim.pdf).  Every declaration
+ * paper paper/probsim.tex (built to paper/probsim.pdf).  Every declaration
  * below names the paper section that explains it; the paper in turn cites
  * the implementing function, so the two can be read side by side.
  *
