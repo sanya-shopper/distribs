@@ -2,12 +2,16 @@
  * rng.c — pseudo-random number generation for probsim.
  *
  * Explained in the companion paper, paper/probsim.tex §2 ("Where the
- * randomness comes from").  Public interface: include/probsim.h.
+ * randomness comes from"); §2.2 examines this generator in detail —
+ * what is proved (period 2^256-1, exact jump functions, the forbidden
+ * all-zero state), what is empirical (BigCrush, PractRand, the
+ * Hamming-weight dependency test), and what remains open.
+ * Public interface: include/probsim.h.
  *
- * The generator is xoshiro256++ (Blackman & Vigna 2019; local copy at
+ * The generator is xoshiro256++ (Blackman & Vigna 2021; local copy at
  * refs/blackman-vigna-xoshiro.pdf).  It is small, fast, portable, and
- * passes the BigCrush battery — more than adequate for statistical
- * simulation, though NOT for cryptography.
+ * shows no systematic failures on BigCrush — more than adequate for
+ * statistical simulation, though NOT for cryptography (see paper §2.2).
  *
  * Seeding uses splitmix64, as the xoshiro authors recommend, so that
  * even trivially-different seeds (0, 1, 2, ...) yield well-separated

@@ -267,6 +267,122 @@ that is the whole trick.\ \webfig{uniform-bits}}
 
 \srcref{src/rng.c: ps\_rng\_seed(), ps\_rng\_next(), ps\_runif()}
 
+\subsection{The generator under the microscope}\label{sec:prng}
+
+Since every result in this library is only as trustworthy as its stream of
+uniforms, the generator deserves a closer look: what kind of object
+xoshiro256++ is, which of its properties are \emph{theorems}, which rest on
+\emph{measurement}, and what remains open.
+
+\paragraph{What it is.}
+xoshiro256++ belongs to the family of \emph{scrambled linear} generators
+\citep{blackman2021xoshiro}: a linear \emph{engine} advances the 256-bit
+state $s = (s_0, s_1, s_2, s_3)$ using only XORs, shifts and rotations ---
+a linear map over the two-element field $\mathbb{F}_2$ --- and a small
+nonlinear \emph{scrambler}, here
+$\mathrm{rotl}(s_0 + s_3, 23) + s_0$ with 64-bit addition, hashes the
+state into each output word (Figure~\ref{fig:prng}).  The division of
+labour is deliberate.  Linear maps are the one class of generators whose
+long-run structure mathematics can fully analyse, but their raw outputs
+carry visible linear fingerprints; the scrambler destroys those artifacts
+while provably not shortening the cycle, since it never feeds back into the
+state.  The design refines a lineage that begins with Marsaglia's xorshift
+generators \citep{marsaglia2003xorshift} and their systematic re-examination
+in \citet{vigna2016xorshift}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm]
+  \node[dist, fill=sYellow, text=inkP] (seed) at (0,0) {seed (64 bits)};
+  \node[dist, fill=sGreen] (mix) at (3.4,0) {splitmix64 $\times 4$};
+  \node[dist, fill=sBlue]  (state) at (7.2,0) {state $s_0 s_1 s_2 s_3$ (256 b)};
+  \node[dist, fill=sBlue]  (scr) at (11.2,0) {$\mathrm{rotl}(s_0{+}s_3,23){+}s_0$};
+  \node[dist, fill=inkS]   (out) at (11.2,-1.7) {64-bit output $\to$ 53-bit $U$};
+  \draw[flow] (seed) -- (mix);
+  \draw[flow] (mix) -- (state);
+  \draw[flow] (state) -- (scr) node[flowlab, pos=0.5] {read};
+  \draw[flow] (scr) -- (out);
+  \draw[flow] (state.south) .. controls (6.2,-1.3) and (8.2,-1.3) ..
+    (state.south east) node[flowlab, pos=0.5]
+    {linear engine: XOR/shift/rotate};
+  % substreams
+  \node[pslabel, anchor=west, color=inkS] at (-0.6,-2.9)
+    {one period, $2^{256}-1$ states, cut into provably disjoint substreams:};
+  \foreach \i/\lab in {0/{stream 0}, 1/{jump$^1$}, 2/{jump$^2$}, 3/{jump$^3$}} {
+    \draw[very thick, color=sBlue] (\i*3.0,-3.5) -- (\i*3.0+2.4,-3.5);
+    \node[pslabel, color=inkS, anchor=north] at (\i*3.0+1.2,-3.6) {\lab};
+  }
+  \node[pslabel, color=inkM, anchor=west] at (0.35,-4.35)
+    {each \texttt{jump()} advances exactly $2^{128}$ steps
+     (\texttt{long\_jump()}: $2^{192}$)};
+\end{tikzpicture}
+\caption{Anatomy of xoshiro256++: a seed is spread over 256 bits of state
+by splitmix64; an $\mathbb{F}_2$-linear engine walks a single cycle of
+length $2^{256}-1$; a nonlinear scrambler hashes each state into the
+output word whose top 53 bits become the uniform draw of
+\S\ref{sec:uniform-enough}.  Jump functions cut the cycle into provably
+non-overlapping substreams for parallel simulation.\ \webfig{prng}}
+\label{fig:prng}
+\end{figure}
+
+\paragraph{What is proved.}
+The engine's transition matrix over $\mathbb{F}_2$ has a primitive
+characteristic polynomial, which yields the central theorem: the state
+sequence is one single cycle through \emph{every} nonzero 256-bit state,
+so the period is exactly $2^{256}-1$ \citep{blackman2021xoshiro}.  Two
+corollaries matter in practice.  First, the all-zero state is the unique
+fixed point and must never be used --- one reason \texttt{ps\_rng\_seed()}
+runs every seed through splitmix64 rather than loading it directly.
+Second, because the engine is linear, jumping ahead by any fixed number of
+steps is a matrix power, computable exactly: the published \texttt{jump}
+and \texttt{long-jump} polynomials advance the state by precisely
+$2^{128}$ and $2^{192}$ steps, giving parallel simulations substreams that
+are \emph{guaranteed} never to overlap.  On the output side, the authors
+use the theory of filtered linear-feedback shift registers to prove
+properties of the scramblers themselves, and for the sibling multiplicative
+scramblers ($\ast$ and $\ast\ast$) they prove $n/64$-dimensional
+equidistribution --- four dimensions at this state size: every quadruple of
+consecutive outputs appears equally often over the full period.
+
+\paragraph{What is measured.}
+No practical non-cryptographic generator comes with a proof that it passes
+statistical tests, so the case for quality is empirical --- and should be
+read the same way as any experiment.  xoshiro256++ shows \emph{no
+systematic failures} on BigCrush, the most demanding battery in the
+TestU01 suite \citep{lecuyer2007testu01}, and no anomalies in long
+PractRand runs \citep{dotyhumphrey_practrand}.  More telling is a test the
+authors built precisely because the standard suites missed something: raw
+$\mathbb{F}_2$-linear engines exhibit long-range dependencies in the
+\emph{Hamming weight} (popcount) of their outputs, invisible to BigCrush.
+Their Hamming-weight dependency test detects such bias in unscrambled and
+weakly scrambled generators, while xoshiro256++ passes it in the tested
+ranges \citep{blackman2021xoshiro} --- the empirical confirmation that the
+scrambler is doing its job.  The contrast with the family's own history is
+instructive: the low-order bits of the simpler xoshiro256+ inherit low
+linear complexity from the engine and fail linearity-sensitive tests,
+which is exactly why this library uses the ++ scrambler.
+
+\paragraph{What is open, and what is simply false.}
+Openness, first: there is no theorem that xoshiro256++ passes any
+statistical test --- for these generators such guarantees are structural
+(period, equidistribution, jumps) while test-passing is evidence, bounded
+by the compute anyone has spent; the $n/64$ equidistribution theorem is
+stated for the multiplicative scramblers, not for ++, whose output
+equidistribution is not fully characterised; and a battery that fails it
+tomorrow is always possible in principle --- that is the nature of
+empirical quality.  Falsity, second: xoshiro256++ is \emph{not} a
+cryptographic generator.  Its state-recovery resistance is nil by design
+--- observing a modest number of outputs suffices to reconstruct the state
+and predict the stream --- so it must never guard secrets, tokens or
+shuffles an adversary can bet against.  For simulation, the working
+summary is comfortable: everything this paper's simulations need ---
+reproducibility, stream independence, full-period coverage, absence of
+detectable bias at our sample sizes --- is either proved or measured with
+margin to spare.
+
+\srcref{src/rng.c \ (engine, scrambler and seeding, with these
+        properties cited)}
+
 \section{The discrete family}\label{sec:discrete}
 
 Discrete distributions describe counts.  The four classical ones form a

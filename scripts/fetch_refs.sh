@@ -48,4 +48,9 @@ fetch blackman-vigna-xoshiro.pdf \
 fetch oneill-pcg-2014.pdf \
     "https://www.cs.hmc.edu/tr/hmc-cs-2014-0905.pdf"
 
+# Marsaglia (2003), "Xorshift RNGs" — open access, JSS (cited in the
+# paper's §2.2 on the ancestry of xoshiro256++).
+fetch marsaglia-2003-xorshift.pdf \
+    "https://www.jstatsoft.org/index.php/jss/article/view/v008i14/xorshift.pdf"
+
 echo "done."
