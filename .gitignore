@@ -1,0 +1,15 @@
+# Build products
+*.o
+*.a
+simulate
+test_probsim
+
+# LaTeX intermediates (the final PDF *is* tracked)
+docs/*.aux
+docs/*.bbl
+docs/*.blg
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/*.fls
+docs/*.fdb_latexmk
