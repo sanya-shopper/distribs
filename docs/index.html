@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<!--
+  index.html — interactive web version of the probsim companion paper.
+
+  This is the browsable, animated counterpart of paper/probsim.pdf (built
+  from paper/probsim.tex): same structure, same section numbers, same
+  worked examples, but every figure is interactive.  Each panel links to
+  the paper section and the C function it mirrors; the paper links back
+  here from each animated figure.  Serve from GitHub Pages by publishing
+  the /docs folder of the main branch — no build step, no dependencies.
+
+  One thing to configure: set REPO_URL (top of the <script> block) to your
+  GitHub repository URL so the "code" links resolve.  See README.md.
+
+  The JavaScript intentionally mirrors the C library: the special
+  functions (lgamma, incomplete beta/gamma) are direct ports of
+  src/special.c, the polar normal sampler mirrors src/dist.c:ps_normal(),
+  and the t-test playground reimplements src/stats.c so the numbers you
+  see here agree with `make run`.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>probsim — the classical distributions, interactively</title>
+<meta name="description"
+      content="Interactive companion to the probsim C99 library: simulate
+               the twelve classical probability distributions and follow
+               them all the way to the t-test.">
+<style>
+/* Palette: the validated data-viz palette used by the paper's figures
+   (light + dark steps of the same hues). */
+:root {
+  color-scheme: light;
+  --page:      #f9f9f7;
+  --surface:   #fcfcfb;
+  --ink:       #0b0b0b;
+  --ink2:      #52514e;
+  --muted:     #898781;
+  --grid:      #e1e0d9;
+  --axis:      #c3c2b7;
+  --border:    rgba(11,11,11,0.10);
+  --blue:      #2a78d6;
+  --green:     #008300;
+  --magenta:   #e87ba4;
+  --yellow:    #eda100;
+  --red:       #d03b3b;
+  --blue-soft: rgba(42,120,214,0.12);
+  --red-soft:  rgba(208,59,59,0.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page:      #0d0d0d;
+    --surface:   #1a1a19;
+    --ink:       #ffffff;
+    --ink2:      #c3c2b7;
+    --muted:     #898781;
+    --grid:      #2c2c2a;
+    --axis:      #383835;
+    --border:    rgba(255,255,255,0.10);
+    --blue:      #3987e5;
+    --green:     #009a00;
+    --magenta:   #d55181;
+    --yellow:    #c98500;
+    --red:       #e66767;
+    --blue-soft: rgba(57,135,229,0.18);
+    --red-soft:  rgba(230,103,103,0.22);
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.88em;
+  color: var(--ink2);
+}
+header.top {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--page) 88%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--border);
+}
+header.top nav {
+  max-width: 960px; margin: 0 auto; padding: 8px 16px;
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+  font-size: 14px;
+}
+header.top .brand { font-weight: 700; margin-right: 6px; }
+header.top a.pdf { color: var(--red); font-weight: 600; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+.hero { margin: 28px 0 8px; }
+.hero h1 { font-size: 34px; line-height: 1.2; margin: 0 0 10px; }
+.hero p.sub { color: var(--ink2); max-width: 46em; margin: 0 0 14px; }
+.hero .cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 6px; }
+.cta a {
+  display: inline-block; padding: 7px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: 14px; font-weight: 600;
+}
+.cta a.primary { background: var(--blue); color: #fff; border-color: transparent; }
+.cta a.primary:hover { text-decoration: none; filter: brightness(1.07); }
+section.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px 16px;
+  margin: 26px 0;
+}
+section.panel h2 { margin: 0 0 6px; font-size: 24px; }
+section.panel h3 { margin: 22px 0 6px; font-size: 19px; }
+section.panel p { max-width: 52em; }
+p.xref {
+  font-size: 13px; color: var(--muted);
+  border-top: 1px solid var(--grid);
+  padding-top: 8px; margin: 14px 0 0;
+}
+p.xref b { color: var(--ink2); font-weight: 600; }
+.viz { margin: 14px 0 4px; }
+.viz canvas, .viz svg { display: block; width: 100%; height: auto; }
+.controls {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  font-size: 13px; color: var(--ink2); margin: 8px 0 2px;
+}
+.controls label { display: flex; align-items: center; gap: 7px; }
+.controls input[type=range] { width: 130px; accent-color: var(--blue); }
+.controls button {
+  padding: 4px 12px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--page); color: var(--ink); font-size: 13px; cursor: pointer;
+}
+.controls button:hover { border-color: var(--blue); color: var(--blue); }
+.controls .val { font-variant-numeric: tabular-nums; color: var(--ink); }
+.readout { font-size: 13px; color: var(--ink2); margin: 6px 0 0;
+           font-variant-numeric: tabular-nums; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+table.cheat {
+  border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 12px 0;
+}
+table.cheat th, table.cheat td {
+  text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--grid);
+  vertical-align: top;
+}
+table.cheat th { color: var(--ink2); font-weight: 600;
+                 border-bottom: 2px solid var(--axis); }
+table.cheat td:first-child a { font-weight: 600; }
+ul.bib { padding-left: 1.2em; font-size: 14.5px; }
+ul.bib li { margin: 8px 0; }
+ul.bib .local { color: var(--muted); font-size: 13px; }
+footer {
+  border-top: 1px solid var(--border); color: var(--muted);
+  font-size: 13.5px; padding: 18px 16px 40px;
+}
+footer .inner { max-width: 960px; margin: 0 auto; }
+#familytree .node { cursor: pointer; }
+#familytree .node rect { transition: opacity .15s; }
+#familytree text { font-family: system-ui, sans-serif; }
+.note {
+  font-size: 13.5px; color: var(--ink2); background: var(--blue-soft);
+  border-radius: 8px; padding: 10px 14px; max-width: 52em;
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <nav>
+    <span class="brand">probsim</span>
+    <a href="#family">family</a>
+    <a href="#uniform-bits">uniform bits</a>
+    <a href="#discrete">discrete</a>
+    <a href="#continuous">continuous</a>
+    <a href="#ttest">t-test</a>
+    <a href="#cheatsheet">cheat sheet</a>
+    <a href="#references">references</a>
+    <a class="pdf" href="probsim.pdf">paper (PDF)</a>
+    <a data-repo href="#">repo</a>
+  </nav>
+</header>
+
+<main>
+
+<div class="hero">
+  <h1>The classical distributions,<br>from uniform bits to the <em>t</em>-test</h1>
+  <p class="sub">
+    Interactive companion to the <strong>probsim</strong> C99 library and its
+    typeset paper.  Twelve classical probability distributions, each one built
+    from the ones before it, each one animated below — and all of them funneling
+    into a working <em>t</em>-test.  Browse casually here; when you want the
+    full narrative in order, the PDF is one click away and mirrors these
+    sections number for number.
+  </p>
+  <div class="cta">
+    <a class="primary" href="probsim.pdf">Read the full paper (PDF)</a>
+    <a data-repo href="#">Browse the C source</a>
+    <a href="#cheatsheet">Jump to the cheat sheet</a>
+  </div>
+</div>
+
+<section class="panel" id="family">
+  <h2>One connected family</h2>
+  <p>
+    Every sampler in the library is manufactured from uniform random bits, and
+    every arrow below is literally a line or two of C in
+    <code data-code="src/dist.c">src/dist.c</code>.  <strong>Hover</strong> a
+    distribution to see where it comes from; <strong>click</strong> to jump to
+    its panel.
+  </p>
+  <div class="viz"><svg id="familytree" viewBox="0 0 920 470"
+       role="img" aria-label="Family tree of the classical distributions"></svg></div>
+  <p class="xref"><b>Paper:</b> Figure 1 &amp; §1 —
+    <a href="probsim.pdf">PDF</a> · <b>Code:</b>
+    <a data-code="src/dist.c"><code>src/dist.c</code></a></p>
+</section>
+
+<section class="panel" id="uniform-bits">
+  <h2>2 · Where the randomness comes from</h2>
+  <p>
+    A pseudo-random generator (here <em>xoshiro256++</em>, Blackman &amp; Vigna
+    2021) emits 64-bit integers; the top 53 bits become a uniform double
+    <em>U</em> on [0,1).  The master trick that turns <em>U</em> into anything
+    else is <strong>inverse-transform sampling</strong>: push <em>U</em>
+    through the inverse CDF, <em>X</em> = <em>F</em><sup>−1</sup>(<em>U</em>).
+    Watch it below: each uniform draw enters on the vertical axis, reflects off
+    the CDF, and lands on the horizontal axis — where the curve is steep, the
+    landings crowd together, and the histogram grows into an exponential
+    density.
+  </p>
+  <div class="viz"><canvas id="cv-inverse" height="360"></canvas></div>
+  <div class="controls">
+    <button id="inv-play">play</button>
+    <button id="inv-step">step</button>
+    <button id="inv-reset">reset</button>
+    <label>rate λ <input type="range" id="inv-lam" min="0.4" max="2" step="0.1"
+           value="1"> <span class="val" id="inv-lam-v">1.0</span></label>
+    <span class="readout" id="inv-count">0 draws</span>
+  </div>
+  <p class="xref"><b>Paper:</b> §2 &amp; Figure 2 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/rng.c"><code>src/rng.c: ps_runif()</code></a>,
+    <a data-code="src/dist.c"><code>src/dist.c: ps_exponential()</code></a></p>
+</section>
+
+<section class="panel" id="discrete">
+  <h2>3 · The discrete family: counts</h2>
+  <p>
+    A yes/no event (<strong>Bernoulli</strong>), how many yeses in <em>n</em>
+    tries (<strong>binomial</strong> — proportions, A/B tests, acceptance
+    sampling), how long until the first yes (<strong>geometric</strong> —
+    retries, attrition), and how many events occur when opportunities are many
+    but each is rare (<strong>Poisson</strong> — arrivals, decays, claims,
+    count regression).  Drag the parameters and watch the shapes respond;
+    hover any stem for its exact probability.
+  </p>
+  <div class="grid2">
+    <div>
+      <h3 id="binomial">Binomial(n, p)</h3>
+      <div class="viz"><canvas id="cv-binom" height="230"></canvas></div>
+      <div class="controls">
+        <label>n <input type="range" id="bin-n" min="1" max="40" step="1" value="20">
+          <span class="val" id="bin-n-v">20</span></label>
+        <label>p <input type="range" id="bin-p" min="0.02" max="0.98" step="0.01"
+          value="0.25"> <span class="val" id="bin-p-v">0.25</span></label>
+      </div>
+      <p class="readout" id="bin-read"></p>
+    </div>
+    <div>
+      <h3 id="poisson">Poisson(λ)</h3>
+      <div class="viz"><canvas id="cv-pois" height="230"></canvas></div>
+      <div class="controls">
+        <label>λ <input type="range" id="poi-lam" min="0.5" max="20" step="0.5"
+          value="4"> <span class="val" id="poi-lam-v">4.0</span></label>
+      </div>
+      <p class="readout" id="poi-read"></p>
+    </div>
+    <div>
+      <h3 id="geometric">Geometric(p)</h3>
+      <div class="viz"><canvas id="cv-geom" height="230"></canvas></div>
+      <div class="controls">
+        <label>p <input type="range" id="geo-p" min="0.05" max="0.9" step="0.01"
+          value="0.2"> <span class="val" id="geo-p-v">0.20</span></label>
+      </div>
+      <p class="readout" id="geo-read"></p>
+    </div>
+    <div>
+      <h3 id="bernoulli">Bernoulli(p): the atom</h3>
+      <p style="font-size:14.5px">
+        Everything on this row is built from the single yes/no experiment:
+        the binomial is <em>n</em> Bernoullis summed, the geometric counts
+        failures before the first success, and the Poisson is the
+        <em>n</em>→∞ limit of rare Bernoullis.  In the library the sampler is
+        one comparison: <code>ps_runif(rng) &lt; p</code>.
+      </p>
+      <p class="readout" id="bern-read"></p>
+      <div class="controls">
+        <button id="bern-flip">flip 100 coins (p = 0.3)</button>
+        <button id="bern-reset">reset</button>
+      </div>
+    </div>
+  </div>
+  <p class="xref"><b>Paper:</b> §3 &amp; Figure 3 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
+    ps_bernoulli() … ps_poisson()</code></a></p>
+</section>
+
+<section class="panel" id="continuous">
+  <h2>4 · The continuous family: measurements</h2>
+
+  <h3 id="normal">Normal — the polar Box–Muller sampler</h3>
+  <p>
+    The normal's inverse CDF has no closed form, so the library earns its
+    normals by <strong>rejection</strong>: rain uniform points on the square,
+    keep the ~79% that land in the disc, and reshape each survivor's radius
+    into a perfect bell curve (Box &amp; Muller 1958).  Press play and watch
+    the histogram on the right converge to <em>N</em>(0,1).
+  </p>
+  <div class="viz"><canvas id="cv-polar" height="300"></canvas></div>
+  <div class="controls">
+    <button id="pol-play">play</button>
+    <button id="pol-burst">+500 points</button>
+    <button id="pol-reset">reset</button>
+    <span class="readout" id="pol-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.3 &amp; Figure 4 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_normal()</code></a>
+    · Box &amp; Muller (1958)</p>
+
+  <h3 id="gamma">Gamma — accumulated waiting</h3>
+  <p>
+    Shape <em>k</em> = 1 is the exponential; integer <em>k</em> is the wait for
+    the <em>k</em>-th event; and as <em>k</em> grows the density symmetrizes
+    toward a normal (the CLT, live).  Scale θ stretches the axis.  Gamma is
+    the conjugate prior for Poisson and exponential rates — and the raw
+    material for beta, chi-squared, <em>t</em> and <em>F</em> below.
+  </p>
+  <div class="viz"><canvas id="cv-gamma" height="260"></canvas></div>
+  <div class="controls">
+    <label>shape k <input type="range" id="gam-k" min="0.3" max="10" step="0.1"
+      value="1"> <span class="val" id="gam-k-v">1.0</span></label>
+    <label>scale θ <input type="range" id="gam-t" min="0.5" max="3" step="0.25"
+      value="1"> <span class="val" id="gam-t-v">1.00</span></label>
+    <button id="gam-sweep">animate k</button>
+    <span class="readout" id="gam-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.4 &amp; Figure 5 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_gamma()</code></a>
+    · Marsaglia &amp; Tsang (2000)</p>
+
+  <h3 id="beta">Beta — the shape of an unknown proportion</h3>
+  <p>
+    Beta(<em>a</em>,<em>b</em>) lives on (0,1) and is the Bayesian's
+    distribution for a probability.  The buttons run the conjugate update
+    that powers Bayesian A/B tests and Thompson-sampling bandits: observe a
+    success and <em>a</em> gains one; observe a failure and <em>b</em> does.
+    Watch certainty sharpen as evidence accumulates.
+  </p>
+  <div class="viz"><canvas id="cv-beta" height="260"></canvas></div>
+  <div class="controls">
+    <label>a <input type="range" id="bet-a" min="0.3" max="12" step="0.1" value="2">
+      <span class="val" id="bet-a-v">2.0</span></label>
+    <label>b <input type="range" id="bet-b" min="0.3" max="12" step="0.1" value="5">
+      <span class="val" id="bet-b-v">5.0</span></label>
+    <button id="bet-succ">observe success</button>
+    <button id="bet-fail">observe failure</button>
+    <button id="bet-reset">reset to Beta(2,5)</button>
+    <span class="readout" id="bet-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.5 &amp; Figure 6 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_beta()</code></a></p>
+
+  <h3 id="chisq">Chi-squared — accumulated squared noise</h3>
+  <p>
+    Sum <em>k</em> squared standard normals and you get χ²<sub><em>k</em></sub>
+    — which is exactly Gamma(<em>k</em>/2, 2).  It is the law of the sample
+    variance in a normal sample, the engine of goodness-of-fit tests, and the
+    denominator of the <em>t</em> statistic.
+  </p>
+  <div class="viz"><canvas id="cv-chi" height="240"></canvas></div>
+  <div class="controls">
+    <label>df k <input type="range" id="chi-k" min="1" max="15" step="1" value="6">
+      <span class="val" id="chi-k-v">6</span></label>
+    <span class="readout" id="chi-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.6 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
+    ps_chi_squared()</code></a></p>
+
+  <h3 id="studentt">Student's t — heavy tails for small samples</h3>
+  <p>
+    Divide a normal by the square root of an independent normalized
+    chi-squared and you get Student's <em>t</em> — a bell with heavier tails,
+    because the scale had to be <em>estimated</em>.  Slide ν and watch the
+    tails fatten at small df and melt into the normal as ν grows.  The readout
+    shows how much more tail probability lies beyond ±1.96 than the normal's
+    5% — exactly why small samples demand bigger effects.
+  </p>
+  <div class="viz"><canvas id="cv-t" height="260"></canvas></div>
+  <div class="controls">
+    <label>df ν <input type="range" id="t-nu" min="1" max="30" step="1" value="3">
+      <span class="val" id="t-nu-v">3</span></label>
+    <span class="readout" id="t-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.7 &amp; Figure 7 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
+    ps_student_t()</code></a> · Student (1908)</p>
+
+  <h3 id="fdist">Fisher's F — comparing variances</h3>
+  <p>
+    The ratio of two independent normalized chi-squareds.  Since sample
+    variances are scaled chi-squareds, <em>F</em> is the null distribution for
+    ANOVA and regression <em>F</em>-tests.  Two family facts close the loop:
+    <em>t</em>²<sub>ν</sub> = <em>F</em><sub>1,ν</sub>, and two-group ANOVA
+    <em>is</em> the pooled <em>t</em>-test.
+  </p>
+  <div class="viz"><canvas id="cv-f" height="240"></canvas></div>
+  <div class="controls">
+    <label>d₁ <input type="range" id="f-d1" min="1" max="20" step="1" value="5">
+      <span class="val" id="f-d1-v">5</span></label>
+    <label>d₂ <input type="range" id="f-d2" min="1" max="20" step="1" value="12">
+      <span class="val" id="f-d2-v">12</span></label>
+    <span class="readout" id="f-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.8 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_f()</code></a></p>
+</section>
+
+<section class="panel" id="ttest">
+  <h2>5 · The payoff: a working t-test</h2>
+  <p>
+    The whole family funnels here.  Model data as normal, estimate its mean
+    and spread, and the standardized mean follows Student's <em>t</em> —
+    so a tail area converts an observed sample into a <em>p</em>-value.
+    This playground simulates a sample from
+    <em>N</em>(10&nbsp;+&nbsp;δ,&nbsp;σ) and tests
+    H₀:&nbsp;mean&nbsp;=&nbsp;10, exactly as
+    <code>ps_t_test_one_sample()</code> does in C.  Set δ = 0 to feel what a
+    true null does; raise δ or <em>n</em> to watch power appear.
+  </p>
+  <div class="viz"><canvas id="cv-ttest" height="330"></canvas></div>
+  <div class="controls">
+    <label>true shift δ <input type="range" id="tt-d" min="0" max="3" step="0.1"
+      value="0"> <span class="val" id="tt-d-v">0.0</span></label>
+    <label>σ <input type="range" id="tt-s" min="1" max="4" step="0.5" value="2">
+      <span class="val" id="tt-s-v">2.0</span></label>
+    <label>n <input type="range" id="tt-n" min="5" max="100" step="1" value="20">
+      <span class="val" id="tt-n-v">20</span></label>
+    <button id="tt-draw">draw sample &amp; test</button>
+    <button id="tt-many">run 400 tests</button>
+  </div>
+  <p class="readout" id="tt-read">Press “draw sample &amp; test”.</p>
+  <div class="viz"><canvas id="cv-phist" height="170"></canvas></div>
+  <p class="readout" id="ph-read">
+    The <em>p</em>-value histogram fills in when you press “run 400 tests”:
+    flat when H₀ is true (δ = 0), piled near zero when it is false.
+  </p>
+  <p class="xref"><b>Paper:</b> §5 &amp; Figure 8 — <a href="probsim.pdf">PDF</a>
+    · <b>Code:</b> <a data-code="src/stats.c"><code>src/stats.c:
+    ps_t_test_one_sample(), ps_t_test_welch()</code></a>
+    · <a data-code="src/special.c"><code>src/special.c: ps_incbeta()</code></a>
+    · Student (1908), Welch (1947)</p>
+</section>
+
+<section class="panel" id="cheatsheet">
+  <h2>7 · A modeler's cheat sheet</h2>
+  <table class="cheat">
+    <thead><tr><th>distribution</th><th>models</th><th>flagship inference role</th></tr></thead>
+    <tbody>
+      <tr><td><a href="#bernoulli">Bernoulli</a></td><td>single yes/no event</td><td>proportion estimation, A/B tests</td></tr>
+      <tr><td><a href="#binomial">Binomial</a></td><td>successes in <em>n</em> trials</td><td>exact tests of proportions</td></tr>
+      <tr><td><a href="#geometric">Geometric</a></td><td>failures until success</td><td>retry / attrition modeling</td></tr>
+      <tr><td><a href="#poisson">Poisson</a></td><td>rare-event counts</td><td>count regression, goodness of fit</td></tr>
+      <tr><td><a href="#uniform-bits">Uniform</a></td><td>total ignorance on a range</td><td><em>p</em>-values under H₀; simulation</td></tr>
+      <tr><td><a href="#uniform-bits">Exponential</a></td><td>memoryless waiting time</td><td>survival &amp; reliability baselines</td></tr>
+      <tr><td><a href="#normal">Normal</a></td><td>sums of small effects</td><td>CLT; regression noise</td></tr>
+      <tr><td><a href="#gamma">Gamma</a></td><td>accumulated waits, scales</td><td>conjugate prior for rates</td></tr>
+      <tr><td><a href="#beta">Beta</a></td><td>unknown proportions</td><td>conjugate prior for <em>p</em>; bandits</td></tr>
+      <tr><td><a href="#chisq">Chi-squared</a></td><td>summed squared noise</td><td>variance CIs, GoF, likelihood ratios</td></tr>
+      <tr><td><a href="#studentt">Student <em>t</em></a></td><td>normalized small samples</td><td><em>t</em>-tests, robust models</td></tr>
+      <tr><td><a href="#fdist"><em>F</em></a></td><td>variance ratios</td><td>ANOVA, regression <em>F</em>-tests</td></tr>
+    </tbody>
+  </table>
+  <p class="note">
+    Want the full derivations, the numerical special-function craft, and the
+    worked driver output?  That's the job of the
+    <a href="probsim.pdf">typeset paper</a> — same sections, full narrative.
+  </p>
+</section>
+
+<section class="panel" id="references">
+  <h2>References</h2>
+  <p style="font-size:14.5px">
+    The complete BibTeX bibliography lives in
+    <a data-code="paper/references.bib"><code>paper/references.bib</code></a>;
+    <code>make fetch-refs</code> downloads local PDF copies of the open-access
+    items into <a data-code="refs"><code>refs/</code></a>.  The load-bearing
+    originals:
+  </p>
+  <ul class="bib">
+    <li>Student (1908), “The probable error of a mean”, <em>Biometrika</em> 6(1).
+      <a href="https://doi.org/10.1093/biomet/6.1.1">doi:10.1093/biomet/6.1.1</a>
+      <span class="local">· local copy <code>refs/student-1908.pdf</code></span></li>
+    <li>Welch (1947), “The generalization of ‘Student's’ problem…”,
+      <em>Biometrika</em> 34.
+      <a href="https://doi.org/10.1093/biomet/34.1-2.28">doi:10.1093/biomet/34.1-2.28</a></li>
+    <li>Box &amp; Muller (1958), “A note on the generation of random normal
+      deviates”, <em>Ann. Math. Statist.</em> 29(2).
+      <a href="https://doi.org/10.1214/aoms/1177706645">doi:10.1214/aoms/1177706645</a>
+      <span class="local">· local copy <code>refs/box-muller-1958.pdf</code></span></li>
+    <li>Marsaglia &amp; Tsang (2000), “A simple method for generating gamma
+      variables”, <em>ACM TOMS</em> 26(3).
+      <a href="https://doi.org/10.1145/358407.358414">doi:10.1145/358407.358414</a></li>
+    <li>Marsaglia &amp; Tsang (2000), “The ziggurat method”, <em>J. Stat.
+      Software</em> 5(8).
+      <a href="https://doi.org/10.18637/jss.v005.i08">doi:10.18637/jss.v005.i08</a>
+      <span class="local">· local copy <code>refs/marsaglia-tsang-ziggurat-2000.pdf</code></span></li>
+    <li>Blackman &amp; Vigna (2021), “Scrambled linear pseudorandom number
+      generators”, <em>ACM TOMS</em> 47(4).
+      <a href="https://doi.org/10.1145/3460772">doi:10.1145/3460772</a>
+      <span class="local">· local copy <code>refs/blackman-vigna-xoshiro.pdf</code></span></li>
+    <li>Welford (1962), “Note on a method for calculating corrected sums of
+      squares and products”, <em>Technometrics</em> 4(3).
+      <a href="https://doi.org/10.1080/00401706.1962.10490022">doi:10.1080/00401706.1962.10490022</a></li>
+    <li>Devroye (1986), <em>Non-Uniform Random Variate Generation</em>, Springer.
+      <a href="http://luc.devroye.org/rnbookindex.html">free from the author</a></li>
+    <li>Knuth (1997), <em>TAOCP vol. 2: Seminumerical Algorithms</em>, 3rd ed.</li>
+    <li>Press et al. (1992), <em>Numerical Recipes in C</em>, 2nd ed., §6.2–6.4.</li>
+  </ul>
+  <p class="xref"><b>Full bibliography with DOIs:</b> paper, final pages —
+    <a href="probsim.pdf">PDF</a></p>
+</section>
+
+</main>
+
+<footer>
+  <div class="inner">
+    probsim — a C99 library, a typeset paper, and this site, kept in sync:
+    the code cites paper sections, the paper cites functions, and both link
+    here.  <a href="probsim.pdf">Full paper (PDF)</a> ·
+    <a data-repo href="#">source repository</a>.
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+/* ================================================================== *
+ *  Configuration
+ * ================================================================== */
+
+/* Set this to your GitHub repository URL after publishing, e.g.
+ * "https://github.com/yourname/probsim" — every [data-code] and
+ * [data-repo] link resolves against it.  See README.md ("Web version"). */
+const REPO_URL = "https://github.com/YOURUSER/probsim";
+
+document.querySelectorAll('[data-repo]').forEach(a => { a.href = REPO_URL; });
+document.querySelectorAll('[data-code]').forEach(a => {
+  a.href = REPO_URL + "/blob/main/" + a.dataset.code;
+});
+
+const REDUCED_MOTION =
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ================================================================== *
+ *  Small math library — direct ports of the C sources so this page
+ *  agrees numerically with `make run`.
+ * ================================================================== */
+
+/* Lanczos log-gamma (g = 7); the C library uses C99 lgamma() instead. */
+function lgamma(x) {
+  if (x < 0.5)
+    return Math.log(Math.PI / Math.sin(Math.PI * x)) - lgamma(1 - x);
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+             771.32342877765313, -176.61502916214059, 12.507343278686905,
+             -0.13857109526572012, 9.9843695780195716e-6,
+             1.5056327351493116e-7];
+  x -= 1;
+  let a = c[0];
+  const t = x + 7.5;
+  for (let i = 1; i < 9; i++) a += c[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t
+         + Math.log(a);
+}
+
+/* Regularized incomplete beta — port of src/special.c: ps_incbeta(). */
+function incbetaCf(x, a, b) {
+  const TINY = 1e-300, EPS = 1e-15;
+  let c = 1, d = 1 - (a + b) * x / (a + 1);
+  if (Math.abs(d) < TINY) d = TINY;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((a + m2 - 1) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+    c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+    d = 1 / d; h *= d * c;
+    aa = -(a + m) * (a + b + m) * x / ((a + m2) * (a + m2 + 1));
+    d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+    c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+function incbeta(x, a, b) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const lbeta = lgamma(a) + lgamma(b) - lgamma(a + b);
+  const front = Math.exp(a * Math.log(x) + b * Math.log1p(-x) - lbeta);
+  if (x < (a + 1) / (a + b + 2)) return front * incbetaCf(x, a, b) / a;
+  return 1 - front * incbetaCf(1 - x, b, a) / b;
+}
+
+/* Student-t CDF — port of src/dist.c: ps_student_t_cdf() (paper eq. 5.2). */
+function tCdf(t, nu) {
+  const tail = 0.5 * incbeta(nu / (nu + t * t), nu / 2, 0.5);
+  return t >= 0 ? 1 - tail : tail;
+}
+/* Upper-tail t quantile by bisection (good enough for a demo). */
+function tQuantile(p, nu) {
+  let lo = 0, hi = 200;
+  for (let i = 0; i < 200; i++) {
+    const mid = 0.5 * (lo + hi);
+    if (tCdf(mid, nu) < p) lo = mid; else hi = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+
+/* Densities / pmfs (same parameterisations as include/probsim.h). */
+const normalPdf = z => Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI);
+const gammaPdf = (x, k, th) => x <= 0 ? 0 :
+  Math.exp((k - 1) * Math.log(x) - x / th - lgamma(k) - k * Math.log(th));
+const betaPdf = (x, a, b) => (x <= 0 || x >= 1) ? 0 :
+  Math.exp((a - 1) * Math.log(x) + (b - 1) * Math.log1p(-x)
+           - (lgamma(a) + lgamma(b) - lgamma(a + b)));
+const chi2Pdf = (x, k) => gammaPdf(x, k / 2, 2);
+const tPdf = (x, nu) =>
+  Math.exp(lgamma((nu + 1) / 2) - lgamma(nu / 2)
+           - 0.5 * Math.log(nu * Math.PI)
+           - 0.5 * (nu + 1) * Math.log1p(x * x / nu));
+const fPdf = (x, d1, d2) => x <= 0 ? 0 :
+  Math.exp(lgamma((d1 + d2) / 2) - lgamma(d1 / 2) - lgamma(d2 / 2)
+           + (d1 / 2) * Math.log(d1 / d2) + (d1 / 2 - 1) * Math.log(x)
+           - ((d1 + d2) / 2) * Math.log(1 + d1 * x / d2));
+const binomPmf = (k, n, p) =>
+  Math.exp(lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1)
+           + k * Math.log(p) + (n - k) * Math.log1p(-p));
+const poisPmf = (k, lam) =>
+  Math.exp(k * Math.log(lam) - lam - lgamma(k + 1));
+const geomPmf = (k, p) => p * Math.exp(k * Math.log1p(-p));
+
+/* Polar Box–Muller — port of src/dist.c: ps_normal() (Math.random is the
+ * browser's stand-in for ps_runif). */
+function randNormal() {
+  let v1, v2, s;
+  do {
+    v1 = 2 * Math.random() - 1;
+    v2 = 2 * Math.random() - 1;
+    s = v1 * v1 + v2 * v2;
+  } while (s >= 1 || s === 0);
+  return v1 * Math.sqrt(-2 * Math.log(s) / s);
+}
+
+/* Welford summary — port of src/stats.c: ps_summarize(). */
+function summarize(xs) {
+  let mean = 0, m2 = 0;
+  xs.forEach((x, i) => {
+    const d = x - mean;
+    mean += d / (i + 1);
+    m2 += d * (x - mean);
+  });
+  const va = xs.length > 1 ? m2 / (xs.length - 1) : NaN;
+  return { n: xs.length, mean, sd: Math.sqrt(va) };
+}
+/* One-sample t-test — port of src/stats.c: ps_t_test_one_sample(). */
+function tTestOneSample(xs, mu0) {
+  const s = summarize(xs);
+  const se = s.sd / Math.sqrt(s.n);
+  const t = (s.mean - mu0) / se;
+  const df = s.n - 1;
+  return { ...s, se, t, df, p: 2 * tCdf(-Math.abs(t), df) };
+}
+
+/* ================================================================== *
+ *  Chart helper: recessive axes, thin marks, DPR-aware canvases.
+ * ================================================================== */
+
+const cssv = name =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function niceTicks(min, max, want) {
+  const span = max - min, raw = span / want;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 5, 10].map(m => m * mag).find(s => span / s <= want);
+  const t = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step)
+    t.push(Math.abs(v) < 1e-9 ? 0 : +v.toPrecision(12));
+  return t;
+}
+
+/* Create a plotting frame on `cv` with data ranges and margins; returns
+ * primitives every panel shares. */
+function chart(cv, hCss, box) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || cv.parentElement.clientWidth || 600;
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(hCss * dpr);
+  cv.style.height = hCss + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const m = Object.assign({ l: 40, r: 12, t: 12, b: 24 }, box.margin);
+  const X = x => m.l + (x - box.xmin) / (box.xmax - box.xmin) * (w - m.l - m.r);
+  const Y = y => hCss - m.b -
+    (y - box.ymin) / (box.ymax - box.ymin) * (hCss - m.t - m.b);
+  const c = {
+    ctx, w, h: hCss, X, Y, m,
+    clear() {
+      ctx.fillStyle = cssv('--surface');
+      ctx.fillRect(0, 0, w, hCss);
+    },
+    axes(xt, yt, xfmt) {
+      ctx.strokeStyle = cssv('--grid'); ctx.lineWidth = 1;
+      (yt || []).forEach(v => {
+        ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(w - m.r, Y(v));
+        ctx.stroke();
+      });
+      ctx.strokeStyle = cssv('--axis'); ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(m.l, Y(box.ymin)); ctx.lineTo(w - m.r, Y(box.ymin));
+      ctx.moveTo(m.l, Y(box.ymin)); ctx.lineTo(m.l, m.t);
+      ctx.stroke();
+      ctx.fillStyle = cssv('--muted');
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      (xt || []).forEach(v =>
+        ctx.fillText(xfmt ? xfmt(v) : String(v), X(v), hCss - m.b + 5));
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      (yt || []).forEach(v => ctx.fillText(String(v), m.l - 5, Y(v)));
+    },
+    curve(f, color, { dash = [], width = 2, from = box.xmin,
+                      to = box.xmax } = {}) {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      const N = 240;
+      for (let i = 0; i <= N; i++) {
+        const x = from + (to - from) * i / N;
+        const y = Math.min(f(x), box.ymax * 1.5);
+        i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y));
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    },
+    fillUnder(f, a, b, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(X(a), Y(0));
+      const N = 100;
+      for (let i = 0; i <= N; i++) {
+        const x = a + (b - a) * i / N;
+        ctx.lineTo(X(x), Y(Math.min(f(x), box.ymax * 1.5)));
+      }
+      ctx.lineTo(X(b), Y(0));
+      ctx.closePath(); ctx.fill();
+    },
+    stems(pts, color) {          /* pts: [ [k, p], ... ] */
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      pts.forEach(([k, p]) => {
+        ctx.beginPath(); ctx.moveTo(X(k), Y(0)); ctx.lineTo(X(k), Y(p));
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(X(k), Y(p), 2.6, 0, 7); ctx.fill();
+      });
+    },
+    vline(x, color, { dash = [], width = 1.5, toY = box.ymax } = {}) {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash);
+      ctx.beginPath(); ctx.moveTo(X(x), Y(box.ymin));
+      ctx.lineTo(X(x), Y(toY)); ctx.stroke(); ctx.setLineDash([]);
+    },
+    label(text, x, y, color, align = 'left') {
+      ctx.fillStyle = color;
+      ctx.font = '600 12px system-ui, sans-serif';
+      ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(text, X(x), Y(y));
+    },
+  };
+  return c;
+}
+
+/* Every panel registers its draw() here; theme changes and resizes
+ * trigger a global redraw. */
+const redrawAll = [];
+function onRedraw(fn) { redrawAll.push(fn); fn(); }
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => redrawAll.forEach(f => f()), 120);
+});
+window.matchMedia('(prefers-color-scheme: dark)')
+  .addEventListener('change', () => redrawAll.forEach(f => f()));
+
+const fmt = (v, d = 3) => Number(v).toFixed(d);
+const $ = id => document.getElementById(id);
+/* Wire a range input to a value label and a redraw callback. */
+function slider(id, digits, fn) {
+  const el = $(id), lab = $(id + '-v');
+  const update = () => {
+    lab.textContent = Number(el.value).toFixed(digits);
+    fn(Number(el.value));
+  };
+  el.addEventListener('input', update);
+  update();
+  return el;
+}
+
+/* ================================================================== *
+ *  Panel: family tree (mirrors paper Figure 1)
+ * ================================================================== */
+(function familyTree() {
+  const svg = $('familytree');
+  const NS = 'http://www.w3.org/2000/svg';
+  const COLORS = { root: '--yellow', disc: '--green', cont: '--blue',
+                   infer: '--red' };
+  const nodes = {
+    unif:  { x: 400, y: 35,  label: 'Uniform(0,1)',    type: 'root',
+             href: '#uniform-bits' },
+    bern:  { x: 140, y: 125, label: 'Bernoulli(p)',    type: 'disc',
+             href: '#bernoulli' },
+    expo:  { x: 400, y: 125, label: 'Exponential(λ)',  type: 'cont',
+             href: '#uniform-bits' },
+    norm:  { x: 680, y: 125, label: 'Normal(μ, σ)',    type: 'cont',
+             href: '#normal' },
+    binom: { x: 75,  y: 225, label: 'Binomial(n, p)',  type: 'disc',
+             href: '#binomial' },
+    geom:  { x: 255, y: 225, label: 'Geometric(p)',    type: 'disc',
+             href: '#geometric' },
+    gam:   { x: 400, y: 225, label: 'Gamma(k, θ)',     type: 'cont',
+             href: '#gamma' },
+    chi:   { x: 680, y: 225, label: 'χ²ₖ',             type: 'cont',
+             href: '#chisq' },
+    pois:  { x: 75,  y: 325, label: 'Poisson(λ)',      type: 'disc',
+             href: '#poisson' },
+    beta:  { x: 400, y: 325, label: 'Beta(a, b)',      type: 'cont',
+             href: '#beta' },
+    stut:  { x: 680, y: 325, label: "Student's t(ν)",  type: 'cont',
+             href: '#studentt' },
+    f:     { x: 855, y: 275, label: 'F(d₁, d₂)',       type: 'cont',
+             href: '#fdist' },
+    ttest: { x: 680, y: 425, label: 'one-sample & Welch t-tests',
+             type: 'infer', href: '#ttest' },
+  };
+  const edges = [
+    ['unif', 'bern',  '[U < p]'],
+    ['unif', 'expo',  '−ln(1−U)/λ'],
+    ['unif', 'norm',  'polar pair'],
+    ['bern', 'binom', 'sum of n'],
+    ['bern', 'geom',  'wait for success'],
+    ['binom','pois',  'n→∞, np = λ'],
+    ['expo', 'gam',   'sum of k waits'],
+    ['norm', 'chi',   'Z₁²+⋯+Zₖ²'],
+    ['gam',  'chi',   '= Gamma(k/2, 2)', 'dashed'],
+    ['gam',  'beta',  'G₁/(G₁+G₂)'],
+    ['chi',  'stut',  'Z/√(V/ν)'],
+    ['norm', 'stut',  '', 'bezier'],
+    ['chi',  'f',     '(U/d₁)/(V/d₂)'],
+    ['stut', 'ttest', 'tail areas ⇒ p-values'],
+  ];
+  const el = (tag, attrs) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  };
+  /* arrowhead */
+  const defs = el('defs', {});
+  const marker = el('marker', { id: 'arrow', viewBox: '0 0 10 10',
+    refX: '9', refY: '5', markerWidth: '7', markerHeight: '7',
+    orient: 'auto-start-reverse' });
+  const tip = el('path', { d: 'M 0 1 L 9 5 L 0 9 z' });
+  tip.setAttribute('fill', 'var(--muted)');
+  marker.appendChild(tip); defs.appendChild(marker); svg.appendChild(defs);
+
+  /* boxes sized from label length (system font, 13.5px). */
+  const boxW = n => Math.max(56, 13 + n.label.length * 7.6);
+  const BOXH = 30;
+  /* clip a center-to-center segment at the source box border */
+  function anchor(a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const hw = boxW(a) / 2 + 4, hh = BOXH / 2 + 4;
+    const s = Math.min(
+      dx !== 0 ? Math.abs(hw / dx) : 1e9,
+      dy !== 0 ? Math.abs(hh / dy) : 1e9);
+    return [a.x + dx * s, a.y + dy * s];
+  }
+  const edgeEls = [], nodeEls = {};
+  const gEdges = el('g', {}); svg.appendChild(gEdges);
+  edges.forEach(([f, t, lab, style]) => {
+    const a = nodes[f], b = nodes[t];
+    let d;
+    if (style === 'bezier') {   /* norm → t, routed around the χ² box */
+      d = `M ${a.x + boxW(a) / 2} ${a.y + 8}
+           C 800 160, 800 290, ${b.x + boxW(b) / 2 + 4} ${b.y - 6}`;
+    } else {
+      const [x1, y1] = anchor(a, b), [x2, y2] = anchor(b, a);
+      d = `M ${x1} ${y1} L ${x2} ${y2}`;
+    }
+    const p = el('path', { d, fill: 'none', 'marker-end': 'url(#arrow)' });
+    p.setAttribute('stroke', 'var(--muted)');
+    p.setAttribute('stroke-width', '1.6');
+    if (style === 'dashed') p.setAttribute('stroke-dasharray', '5 4');
+    gEdges.appendChild(p);
+    let txt = null;
+    if (lab) {
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - 5;
+      txt = el('text', { x: mx, y: my, 'text-anchor': 'middle',
+                         'font-size': '11.5',
+                         'paint-order': 'stroke',
+                         'stroke-width': '4' });
+      txt.setAttribute('fill', 'var(--ink2)');
+      txt.setAttribute('stroke', 'var(--surface)');
+      txt.textContent = lab;
+      gEdges.appendChild(txt);
+    }
+    edgeEls.push({ from: f, to: t, p, txt });
+  });
+  for (const id in nodes) {
+    const n = nodes[id], w = boxW(n);
+    const g = el('g', { class: 'node', tabindex: '0', role: 'link',
+                        'aria-label': n.label });
+    const r = el('rect', { x: n.x - w / 2, y: n.y - BOXH / 2, width: w,
+                           height: BOXH, rx: 7 });
+    r.setAttribute('fill', `var(${COLORS[n.type]})`);
+    const t = el('text', { x: n.x, y: n.y + 4.5, 'text-anchor': 'middle',
+                           'font-size': '13.5', 'font-weight': '600' });
+    t.setAttribute('fill', n.type === 'root' ? '#0b0b0b' : '#ffffff');
+    t.textContent = n.label;
+    g.appendChild(r); g.appendChild(t); svg.appendChild(g);
+    nodeEls[id] = g;
+    g.addEventListener('click', () => { location.hash = n.href; });
+    g.addEventListener('mouseenter', () => highlight(id));
+    g.addEventListener('mouseleave', () => highlight(null));
+  }
+  /* highlight a node's ancestry (how it is built) */
+  function ancestors(id, acc) {
+    edges.forEach(([f, t]) => {
+      if (t === id && !acc.has(f)) { acc.add(f); ancestors(f, acc); }
+    });
+    return acc;
+  }
+  function highlight(id) {
+    if (!id) {
+      for (const k in nodeEls) nodeEls[k].style.opacity = 1;
+      edgeEls.forEach(e => {
+        e.p.style.opacity = 1; if (e.txt) e.txt.style.opacity = 1;
+      });
+      return;
+    }
+    const keep = ancestors(id, new Set([id]));
+    for (const k in nodeEls)
+      nodeEls[k].style.opacity = keep.has(k) ? 1 : 0.18;
+    edgeEls.forEach(e => {
+      const on = keep.has(e.to) && keep.has(e.from);
+      e.p.style.opacity = on ? 1 : 0.12;
+      if (e.txt) e.txt.style.opacity = on ? 1 : 0.12;
+    });
+  }
+})();
+
+/* ================================================================== *
+ *  Panel: inverse-transform sampling (paper Figure 2, §2.1)
+ * ================================================================== */
+(function inversePanel() {
+  const cv = $('cv-inverse');
+  const BINS = 40, XMAX = 4;
+  let lam = 1, hist = new Array(BINS).fill(0), total = 0;
+  let playing = false, marker = null;    /* {u, x, phase 0..2} */
+
+  const F = x => 1 - Math.exp(-lam * x);
+  const Finv = u => -Math.log(1 - u) / lam;
+
+  function draw() {
+    const ch = chart(cv, 360, { xmin: 0, xmax: XMAX, ymin: 0, ymax: 1.06 });
+    ch.clear();
+    ch.axes(niceTicks(0, XMAX, 5), [0, 0.5, 1]);
+    /* histogram of landings (rescaled so the tallest bar is 60% high) */
+    const peak = Math.max(...hist, 1);
+    ch.ctx.fillStyle = cssv('--blue-soft');
+    const bw = XMAX / BINS;
+    hist.forEach((c, i) => {
+      if (!c) return;
+      const hgt = 0.62 * c / peak;
+      ch.ctx.fillRect(ch.X(i * bw) + 1, ch.Y(hgt),
+                      ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(hgt));
+    });
+    ch.curve(F, cssv('--blue'));
+    ch.label(`F(x) = 1 − e^(−${fmt(lam, 1)}x)`, XMAX * 0.55, 0.93,
+             cssv('--blue'));
+    if (total)
+      ch.label('landings (histogram)', XMAX * 0.55, 0.10, cssv('--muted'));
+    if (marker) {
+      const { u, x, phase } = marker;
+      const red = cssv('--red');
+      ch.ctx.strokeStyle = red; ch.ctx.lineWidth = 1.8;
+      ch.ctx.setLineDash([5, 4]);
+      /* horizontal ray from (0,u) toward the curve, then drop to axis */
+      const hx = Math.min(phase, 1) * x;
+      ch.ctx.beginPath();
+      ch.ctx.moveTo(ch.X(0), ch.Y(u));
+      ch.ctx.lineTo(ch.X(hx), ch.Y(u));
+      ch.ctx.stroke();
+      if (phase > 1) {
+        const vy = u * (1 - Math.min(phase - 1, 1));
+        ch.ctx.beginPath();
+        ch.ctx.moveTo(ch.X(x), ch.Y(u));
+        ch.ctx.lineTo(ch.X(x), ch.Y(vy));
+        ch.ctx.stroke();
+      }
+      ch.ctx.setLineDash([]);
+      ch.ctx.fillStyle = red;
+      ch.ctx.beginPath();
+      ch.ctx.arc(ch.X(0), ch.Y(u), 3.4, 0, 7); ch.ctx.fill();
+      ch.label('U', 0.06, u + 0.03, red);
+    }
+    $('inv-count').textContent = `${total} draws`;
+  }
+
+  function commit(x) {
+    const b = Math.min(BINS - 1, Math.floor(x / (XMAX / BINS)));
+    hist[b]++; total++;
+  }
+  function newMarker() {
+    const u = Math.random();
+    return { u, x: Math.min(Finv(u), XMAX), phase: 0 };
+  }
+  function tick() {
+    if (!playing) return;
+    if (!marker) marker = newMarker();
+    marker.phase += 0.06;
+    if (marker.phase >= 2) { commit(marker.x); marker = newMarker(); }
+    draw();
+    requestAnimationFrame(tick);
+  }
+  $('inv-play').addEventListener('click', () => {
+    playing = !playing;
+    $('inv-play').textContent = playing ? 'pause' : 'play';
+    if (playing) requestAnimationFrame(tick);
+  });
+  $('inv-step').addEventListener('click', () => {
+    const m = newMarker();
+    commit(m.x);
+    marker = { ...m, phase: 2 };
+    draw();
+  });
+  $('inv-reset').addEventListener('click', () => {
+    hist.fill(0); total = 0; marker = null; draw();
+  });
+  slider('inv-lam', 1, v => {
+    lam = v; hist.fill(0); total = 0; marker = null; draw();
+  });
+  onRedraw(draw);
+})();
+
+/* ================================================================== *
+ *  Panels: the discrete pmfs (paper Figure 3, §3)
+ * ================================================================== */
+function pmfPanel(cvId, readId, opts) {
+  const cv = $(cvId);
+  let params = opts.init;
+  function pts() {
+    const { kmax, pmf } = opts.range(params);
+    const a = [];
+    for (let k = 0; k <= kmax; k++) a.push([k, pmf(k)]);
+    return a;
+  }
+  let hoverK = null;
+  function draw() {
+    const data = pts();
+    const ymax = Math.max(...data.map(d => d[1])) * 1.15 || 1;
+    const kmax = data.length - 1;
+    const ch = chart(cv, 230, { xmin: -0.7, xmax: kmax + 0.7,
+                                ymin: 0, ymax });
+    ch.clear();
+    ch.axes(niceTicks(0, kmax, 6), niceTicks(0, ymax, 3));
+    ch.stems(data, cssv(opts.color));
+    if (hoverK !== null && hoverK <= kmax) {
+      ch.vline(hoverK, cssv('--muted'), { dash: [3, 3] });
+      $(readId).textContent =
+        `P[X = ${hoverK}] = ${fmt(data[hoverK][1], 4)}   ·   ${opts.moments(params)}`;
+    } else {
+      $(readId).textContent = opts.moments(params);
+    }
+  }
+  cv.addEventListener('mousemove', ev => {
+    const rect = cv.getBoundingClientRect();
+    const kmax = pts().length - 1;
+    const frac = (ev.clientX - rect.left - 40) / (rect.width - 52);
+    const k = Math.round(-0.7 + frac * (kmax + 1.4));
+    hoverK = (k >= 0 && k <= kmax) ? k : null;
+    draw();
+  });
+  cv.addEventListener('mouseleave', () => { hoverK = null; draw(); });
+  opts.wire(v => { params = v; draw(); }, () => params);
+  onRedraw(draw);
+}
+
+pmfPanel('cv-binom', 'bin-read', {
+  color: '--blue',
+  init: { n: 20, p: 0.25 },
+  range: ({ n, p }) => ({ kmax: n, pmf: k => binomPmf(k, n, p) }),
+  moments: ({ n, p }) =>
+    `mean np = ${fmt(n * p, 2)}   variance np(1−p) = ${fmt(n * p * (1 - p), 2)}`,
+  wire(set, get) {
+    slider('bin-n', 0, v => set({ ...get(), n: v }));
+    slider('bin-p', 2, v => set({ ...get(), p: v }));
+  },
+});
+pmfPanel('cv-pois', 'poi-read', {
+  color: '--green',
+  init: { lam: 4 },
+  range: ({ lam }) => ({
+    kmax: Math.max(10, Math.ceil(lam + 4 * Math.sqrt(lam))),
+    pmf: k => poisPmf(k, lam),
+  }),
+  moments: ({ lam }) => `mean = variance = λ = ${fmt(lam, 1)}`,
+  wire(set) { slider('poi-lam', 1, v => set({ lam: v })); },
+});
+pmfPanel('cv-geom', 'geo-read', {
+  color: '--magenta',
+  init: { p: 0.2 },
+  range: ({ p }) => ({
+    kmax: Math.max(8, Math.min(60, Math.ceil(4 * (1 - p) / p + 2))),
+    pmf: k => geomPmf(k, p),
+  }),
+  moments: ({ p }) =>
+    `mean (1−p)/p = ${fmt((1 - p) / p, 2)}   variance (1−p)/p² = ${fmt((1 - p) / (p * p), 2)}`,
+  wire(set) { slider('geo-p', 2, v => set({ p: v })); },
+});
+
+/* Bernoulli running-proportion demo. */
+(function bernoulli() {
+  let succ = 0, n = 0;
+  function show() {
+    if (!n) {
+      $('bern-read').textContent =
+        'No flips yet — the estimate p̂ = successes/n will appear here.';
+      return;
+    }
+    const phat = succ / n;
+    const se = Math.sqrt(phat * (1 - phat) / n);
+    $('bern-read').textContent =
+      `${succ} successes in ${n} flips  →  p̂ = ${fmt(phat, 3)} ± ${fmt(se, 3)}  (true p = 0.3)`;
+  }
+  $('bern-flip').addEventListener('click', () => {
+    for (let i = 0; i < 100; i++) if (Math.random() < 0.3) succ++;
+    n += 100; show();
+  });
+  $('bern-reset').addEventListener('click', () => { succ = 0; n = 0; show(); });
+  show();
+})();
+
+/* ================================================================== *
+ *  Panel: polar Box–Muller (paper Figure 4, §4.3)
+ * ================================================================== */
+(function polarPanel() {
+  const cv = $('cv-polar');
+  const BINS = 36, ZMAX = 3.6;
+  let hist = new Array(BINS).fill(0), accepted = 0, tried = 0;
+  let recent = [];                     /* {v1, v2, ok, age} */
+  let playing = false;
+
+  function samplePoint(display) {
+    const v1 = 2 * Math.random() - 1, v2 = 2 * Math.random() - 1;
+    const s = v1 * v1 + v2 * v2;
+    const ok = s < 1 && s > 0;
+    tried++;
+    if (ok) {
+      accepted++;
+      const z = v1 * Math.sqrt(-2 * Math.log(s) / s);
+      const b = Math.floor((z + ZMAX) / (2 * ZMAX) * BINS);
+      if (b >= 0 && b < BINS) hist[b]++;
+    }
+    if (display) {
+      recent.push({ v1, v2, ok, age: 0 });
+      if (recent.length > 420) recent.shift();
+    }
+  }
+
+  function draw() {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth || 600, h = 300;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + 'px';
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = cssv('--surface'); ctx.fillRect(0, 0, w, h);
+
+    /* left: the square and disc */
+    const S = Math.min(h - 40, w * 0.42), cx = 20 + S / 2, cy = h / 2;
+    const P = (vx, vy) => [cx + vx * S / 2, cy - vy * S / 2];
+    ctx.strokeStyle = cssv('--axis'); ctx.lineWidth = 1.4;
+    ctx.strokeRect(cx - S / 2, cy - S / 2, S, S);
+    ctx.fillStyle = cssv('--blue-soft');
+    ctx.beginPath(); ctx.arc(cx, cy, S / 2, 0, 7); ctx.fill();
+    ctx.strokeStyle = cssv('--blue');
+    ctx.beginPath(); ctx.arc(cx, cy, S / 2, 0, 7); ctx.stroke();
+    recent.forEach(pt => {
+      const [x, y] = P(pt.v1, pt.v2);
+      const fade = Math.max(0, 1 - pt.age / 260);
+      if (pt.ok) {
+        ctx.globalAlpha = 0.75 * fade;
+        ctx.fillStyle = cssv('--blue');
+        ctx.beginPath(); ctx.arc(x, y, 2.1, 0, 7); ctx.fill();
+      } else {
+        ctx.globalAlpha = Math.max(0, 1 - pt.age / 90);
+        ctx.strokeStyle = cssv('--red'); ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y - 3); ctx.lineTo(x + 3, y + 3);
+        ctx.moveTo(x - 3, y + 3); ctx.lineTo(x + 3, y - 3);
+        ctx.stroke();
+      }
+    });
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = cssv('--ink2');
+    ctx.font = '600 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('accept if v₁² + v₂² < 1', cx, cy + S / 2 + 18);
+
+    /* right: histogram of Z with N(0,1) overlay */
+    const gx = 20 + S + 34, gw = w - gx - 14, gh = h - 46, gy = h - 30;
+    const Xz = z => gx + (z + ZMAX) / (2 * ZMAX) * gw;
+    const binw = 2 * ZMAX / BINS;
+    const Yd = d => gy - d / 0.48 * gh;
+    ctx.strokeStyle = cssv('--axis'); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + gw, gy); ctx.stroke();
+    ctx.fillStyle = cssv('--muted');
+    ctx.font = '11px system-ui, sans-serif';
+    [-3, -2, -1, 0, 1, 2, 3].forEach(z => {
+      ctx.textAlign = 'center';
+      ctx.fillText(String(z), Xz(z), gy + 14);
+    });
+    if (accepted) {
+      ctx.fillStyle = cssv('--blue-soft');
+      hist.forEach((c, i) => {
+        const dens = c / accepted / binw;
+        const x0 = Xz(-ZMAX + i * binw);
+        ctx.fillRect(x0 + 0.5, Yd(dens), gw / BINS - 1, gy - Yd(dens));
+      });
+    }
+    ctx.strokeStyle = cssv('--green'); ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= 160; i++) {
+      const z = -ZMAX + 2 * ZMAX * i / 160;
+      const [px, py] = [Xz(z), Yd(normalPdf(z))];
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+    ctx.fillStyle = cssv('--green');
+    ctx.font = '600 12px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('N(0,1)', Xz(1.15), Yd(normalPdf(1.15)) - 6);
+    $('pol-read').textContent = tried
+      ? `accepted ${accepted}/${tried} (${fmt(100 * accepted / tried, 1)}% — theory: π/4 ≈ 78.5%)`
+      : 'no points yet';
+  }
+
+  function tick() {
+    if (!playing) return;
+    for (let i = 0; i < 6; i++) samplePoint(true);
+    recent.forEach(p => p.age++);
+    draw();
+    requestAnimationFrame(tick);
+  }
+  $('pol-play').addEventListener('click', () => {
+    playing = !playing;
+    $('pol-play').textContent = playing ? 'pause' : 'play';
+    if (playing) requestAnimationFrame(tick);
+  });
+  $('pol-burst').addEventListener('click', () => {
+    for (let i = 0; i < 500; i++) samplePoint(i % 12 === 0);
+    draw();
+  });
+  $('pol-reset').addEventListener('click', () => {
+    hist.fill(0); accepted = 0; tried = 0; recent = []; draw();
+  });
+  onRedraw(draw);
+})();
+
+/* ================================================================== *
+ *  Panels: continuous density explorers (paper Figures 5–7, §4)
+ * ================================================================== */
+function densityPanel(cvId, h, getState, spec) {
+  const cv = $(cvId);
+  function draw() {
+    const st = getState();
+    const { xmax, f, labels, shade } = spec(st);
+    let ymax = 0;
+    for (let i = 1; i <= 200; i++)
+      ymax = Math.max(ymax, f(xmax * i / 200));
+    ymax = Math.min(ymax * 1.12, 3.2) || 1;
+    const xmin = spec(st).xmin ?? 0;
+    const ch = chart(cv, h, { xmin, xmax, ymin: 0, ymax });
+    ch.clear();
+    ch.axes(niceTicks(xmin, xmax, 6), niceTicks(0, ymax, 3));
+    (shade || []).forEach(([a, b]) =>
+      ch.fillUnder(f, a, b, cssv('--red-soft')));
+    (spec(st).extra || []).forEach(e =>
+      ch.curve(e.f, cssv(e.color), { dash: e.dash || [] }));
+    ch.curve(f, cssv('--blue'));
+    (labels || []).forEach(([txt, x, y, color]) =>
+      /* y = 0 means "auto": park the label near the top, clear of the axis */
+      ch.label(txt, x, y === 0 ? ymax * 0.88 : y, cssv(color || '--blue')));
+  }
+  onRedraw(draw);
+  return draw;
+}
+
+/* Gamma */
+(function () {
+  let k = 1, th = 1, sweeping = false;
+  const draw = densityPanel('cv-gamma', 260, () => ({ k, th }), s => ({
+    xmax: Math.max(8, s.k * s.th + 4 * Math.sqrt(s.k) * s.th),
+    f: x => gammaPdf(x, s.k, s.th),
+    labels: [[`Gamma(${fmt(s.k, 1)}, ${fmt(s.th, 2)})`,
+              (s.k * s.th + 4 * Math.sqrt(s.k) * s.th) * 0.62, 0, '--blue']],
+  }));
+  const read = () => {
+    $('gam-read').textContent =
+      `mean kθ = ${fmt(k * th, 2)}   variance kθ² = ${fmt(k * th * th, 2)}`;
+  };
+  const kSlider = slider('gam-k', 1, v => { k = v; draw(); read(); });
+  slider('gam-t', 2, v => { th = v; draw(); read(); });
+  $('gam-sweep').addEventListener('click', () => {
+    if (sweeping) { sweeping = false; return; }
+    sweeping = true;
+    const step = () => {
+      if (!sweeping) return;
+      k = k >= 10 ? 0.3 : k + (REDUCED_MOTION ? 0.7 : 0.07);
+      kSlider.value = k;
+      $('gam-k-v').textContent = fmt(k, 1);
+      draw(); read();
+      if (REDUCED_MOTION) setTimeout(step, 400);
+      else requestAnimationFrame(step);
+    };
+    step();
+  });
+  read();
+})();
+
+/* Beta with conjugate-update buttons */
+(function () {
+  let a = 2, b = 5, obs = 0;
+  const draw = densityPanel('cv-beta', 260, () => ({ a, b }), s => ({
+    xmax: 1,
+    f: x => betaPdf(x, s.a, s.b),
+    labels: [[`Beta(${fmt(s.a, 1)}, ${fmt(s.b, 1)})`, 0.62, 0, '--blue']],
+  }));
+  const aS = slider('bet-a', 1, v => { a = v; obs = 0; drawRead(); });
+  const bS = slider('bet-b', 1, v => { b = v; obs = 0; drawRead(); });
+  function drawRead() {
+    draw();
+    $('bet-read').textContent =
+      `posterior mean a/(a+b) = ${fmt(a / (a + b), 3)}` +
+      (obs ? `   ·   ${obs} observation${obs > 1 ? 's' : ''} added` : '');
+  }
+  function bump(da, db) {
+    a = Math.min(a + da, 200); b = Math.min(b + db, 200); obs++;
+    aS.value = Math.min(a, 12); bS.value = Math.min(b, 12);
+    $('bet-a-v').textContent = fmt(a, 1);
+    $('bet-b-v').textContent = fmt(b, 1);
+    drawRead();
+  }
+  $('bet-succ').addEventListener('click', () => bump(1, 0));
+  $('bet-fail').addEventListener('click', () => bump(0, 1));
+  $('bet-reset').addEventListener('click', () => {
+    a = 2; b = 5; obs = 0; aS.value = 2; bS.value = 5;
+    $('bet-a-v').textContent = '2.0'; $('bet-b-v').textContent = '5.0';
+    drawRead();
+  });
+  drawRead();
+})();
+
+/* Chi-squared */
+(function () {
+  let k = 6;
+  const draw = densityPanel('cv-chi', 240, () => k, kk => ({
+    xmax: Math.max(10, kk + 5 * Math.sqrt(2 * kk)),
+    f: x => chi2Pdf(x, kk),
+    labels: [[`χ² with ${kk} df  ( = Gamma(${fmt(kk / 2, 1)}, 2) )`,
+              (kk + 5 * Math.sqrt(2 * kk)) * 0.5, 0, '--blue']],
+  }));
+  slider('chi-k', 0, v => {
+    k = v; draw();
+    $('chi-read').textContent =
+      `mean k = ${k}   variance 2k = ${2 * k}`;
+  });
+})();
+
+/* Student t vs normal, with tail readout */
+(function () {
+  let nu = 3;
+  const draw = densityPanel('cv-t', 260, () => nu, n => ({
+    xmin: -4.5, xmax: 4.5,
+    f: x => tPdf(x, n),
+    shade: [[-4.5, -1.96], [1.96, 4.5]],
+    extra: [{ f: normalPdf, color: '--muted', dash: [5, 4] }],
+    labels: [[`t(${n})`, 2.2, tPdf(2.2, n) + 0.05, '--blue'],
+             ['N(0,1)', 0.35, normalPdf(0.32) + 0.012, '--muted']],
+  }));
+  slider('t-nu', 0, v => {
+    nu = v; draw();
+    const tail = 2 * (1 - tCdf(1.96, nu));
+    $('t-read').textContent =
+      `P(|T| > 1.96) = ${fmt(tail, 4)}  vs  0.0500 for the normal` +
+      `  (${fmt(tail / 0.05, 2)}× as much tail)`;
+  });
+})();
+
+/* Fisher F */
+(function () {
+  let d1 = 5, d2 = 12;
+  const draw = densityPanel('cv-f', 240, () => ({ d1, d2 }), s => ({
+    xmax: 5,
+    f: x => fPdf(x, s.d1, s.d2),
+    labels: [[`F(${s.d1}, ${s.d2})`, 3.1, 0, '--blue']],
+  }));
+  const read = () => {
+    $('f-read').textContent = d2 > 2
+      ? `mean d₂/(d₂−2) = ${fmt(d2 / (d2 - 2), 3)}`
+      : 'mean undefined for d₂ ≤ 2';
+  };
+  slider('f-d1', 0, v => { d1 = v; draw(); read(); });
+  slider('f-d2', 0, v => { d2 = v; draw(); read(); });
+})();
+
+/* ================================================================== *
+ *  Panel: the t-test playground (paper Figure 8, §5)
+ * ================================================================== */
+(function tTestPanel() {
+  const MU0 = 10;
+  let delta = 0, sigma = 2, n = 20;
+  let result = null;                 /* last tTestOneSample + sample */
+  let pvals = null;                  /* histogram counts (20 bins)   */
+
+  function drawMain() {
+    const cv = $('cv-ttest');
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth || 700, h = 330;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.height = h + 'px';
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = cssv('--surface'); ctx.fillRect(0, 0, w, h);
+
+    /* top strip: the sample */
+    const sx0 = 46, sx1 = w - 16, sy = 52;
+    const xlo = MU0 - 9, xhi = MU0 + 9;
+    const SX = x => sx0 + (x - xlo) / (xhi - xlo) * (sx1 - sx0);
+    ctx.strokeStyle = cssv('--axis'); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(sx0, sy); ctx.lineTo(sx1, sy); ctx.stroke();
+    ctx.fillStyle = cssv('--muted'); ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    niceTicks(xlo, xhi, 8).forEach(v => ctx.fillText(String(v), SX(v), sy + 14));
+    ctx.textAlign = 'left';
+    ctx.fillText('the simulated sample', sx0, 12);
+    /* H0 line, labelled on its left so the sample-mean label owns the right */
+    ctx.strokeStyle = cssv('--muted'); ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(SX(MU0), sy - 34); ctx.lineTo(SX(MU0), sy + 4);
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = cssv('--muted'); ctx.textAlign = 'right';
+    ctx.fillText('H₀: μ = 10', SX(MU0) - 5, sy - 28);
+    if (result) {
+      ctx.fillStyle = cssv('--blue'); ctx.globalAlpha = 0.65;
+      result.xs.forEach(x => {
+        ctx.beginPath();
+        ctx.arc(SX(Math.max(xlo, Math.min(xhi, x))),
+                sy - 12 - 8 * Math.random(), 3, 0, 7);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = cssv('--blue'); ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(SX(result.mean), sy - 34);
+      ctx.lineTo(SX(result.mean), sy + 4); ctx.stroke();
+      ctx.fillStyle = cssv('--blue');
+      ctx.fillText(`x̄ = ${fmt(result.mean, 2)}`, SX(result.mean) + 5, sy - 40);
+    }
+
+    /* bottom: the null t density with rejection region + observed t */
+    const box = { xmin: -5, xmax: 5, ymin: 0, ymax: 0.44 };
+    const gy0 = 84;
+    const gh = h - gy0 - 26;
+    const X = x => sx0 + (x - box.xmin) / 10 * (sx1 - sx0);
+    const Y = y => gy0 + gh - y / box.ymax * gh;
+    const df = result ? result.df : n - 1;
+    const crit = tQuantile(0.975, df);
+    /* shaded tails */
+    ctx.fillStyle = cssv('--red-soft');
+    [[box.xmin, -crit], [crit, box.xmax]].forEach(([a, b]) => {
+      ctx.beginPath(); ctx.moveTo(X(a), Y(0));
+      for (let i = 0; i <= 60; i++) {
+        const x = a + (b - a) * i / 60;
+        ctx.lineTo(X(x), Y(tPdf(x, df)));
+      }
+      ctx.lineTo(X(b), Y(0)); ctx.closePath(); ctx.fill();
+    });
+    ctx.strokeStyle = cssv('--axis'); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(sx0, Y(0)); ctx.lineTo(sx1, Y(0)); ctx.stroke();
+    ctx.fillStyle = cssv('--muted'); ctx.textAlign = 'center';
+    [-4, -2, 0, 2, 4].forEach(v => ctx.fillText(String(v), X(v), Y(0) + 14));
+    ctx.strokeStyle = cssv('--blue'); ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i <= 200; i++) {
+      const x = -5 + 10 * i / 200;
+      i ? ctx.lineTo(X(x), Y(tPdf(x, df))) : ctx.moveTo(X(x), Y(tPdf(x, df)));
+    }
+    ctx.stroke();
+    ctx.fillStyle = cssv('--blue'); ctx.textAlign = 'left';
+    ctx.fillText(`null density  t(${fmt(df, 0)})`, X(-4.8), Y(0.40));
+    ctx.fillStyle = cssv('--red');
+    ctx.fillText(`5% rejection region beyond ±${fmt(crit, 2)}`, X(1.0), Y(0.40));
+    if (result) {
+      const tx = Math.max(-4.9, Math.min(4.9, result.t));
+      ctx.strokeStyle = cssv('--red'); ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(X(tx), Y(0));
+      ctx.lineTo(X(tx), Y(0.30)); ctx.stroke();
+      ctx.fillStyle = cssv('--red'); ctx.textAlign = 'center';
+      ctx.fillText(`observed t = ${fmt(result.t, 2)}`, X(tx), Y(0.33));
+    }
+  }
+
+  function drawPHist() {
+    const cv = $('cv-phist');
+    const ch = chart(cv, 170, { xmin: 0, xmax: 1, ymin: 0,
+      ymax: pvals ? Math.max(...pvals, 30) * 1.15 : 40,
+      margin: { l: 40, r: 12, t: 14, b: 22 } });
+    ch.clear();
+    ch.axes([0, 0.25, 0.5, 0.75, 1], null, v => fmt(v, 2));
+    if (pvals) {
+      const B = pvals.length, bw = 1 / B;
+      ch.ctx.fillStyle = cssv('--blue-soft');
+      const stroke = cssv('--blue');
+      pvals.forEach((c, i) => {
+        ch.ctx.fillRect(ch.X(i * bw) + 1, ch.Y(c),
+                        ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(c));
+      });
+      ch.ctx.strokeStyle = stroke;
+      /* expected-height line if p-values were uniform */
+      const exp400 = 400 / B;
+      ch.ctx.setLineDash([5, 4]);
+      ch.ctx.beginPath();
+      ch.ctx.moveTo(ch.X(0), ch.Y(exp400));
+      ch.ctx.lineTo(ch.X(1), ch.Y(exp400));
+      ch.ctx.stroke(); ch.ctx.setLineDash([]);
+      ch.label('uniform reference', 0.72, exp400 * 1.1, cssv('--blue'));
+      ch.label('p-values from 400 simulated tests', 0.02,
+               Math.max(...pvals) * 1.02, cssv('--ink2'));
+    }
+  }
+
+  function drawSample() {
+    const xs = Array.from({ length: n },
+                          () => MU0 + delta + sigma * randNormal());
+    result = { ...tTestOneSample(xs, MU0), xs };
+    drawMain();
+    const verdict = result.p < 0.05
+      ? 'REJECT H₀ at the 5% level'
+      : 'do not reject H₀';
+    $('tt-read').textContent =
+      `x̄ = ${fmt(result.mean, 3)}, s = ${fmt(result.sd, 3)}, ` +
+      `se = ${fmt(result.se, 3)}  →  t = ${fmt(result.t, 3)}, ` +
+      `df = ${result.df}, two-sided p = ${fmt(result.p, 4)}  →  ${verdict}` +
+      (delta === 0 ? '  (H₀ is actually true here)' :
+                     `  (true mean is ${fmt(MU0 + delta, 1)})`);
+  }
+  function runMany() {
+    const B = 20;
+    pvals = new Array(B).fill(0);
+    let rejects = 0;
+    for (let r = 0; r < 400; r++) {
+      const xs = Array.from({ length: n },
+                            () => MU0 + delta + sigma * randNormal());
+      const p = tTestOneSample(xs, MU0).p;
+      pvals[Math.min(B - 1, Math.floor(p * B))]++;
+      if (p < 0.05) rejects++;
+    }
+    drawPHist();
+    $('ph-read').textContent = delta === 0
+      ? `H₀ true: rejected ${rejects}/400 = ${fmt(100 * rejects / 400, 1)}% ` +
+        `— close to the nominal 5% (type I error), and the histogram is flat: ` +
+        `under a true null, p-values are Uniform(0,1).`
+      : `H₀ false (true mean ${fmt(MU0 + delta, 1)}): rejected ` +
+        `${rejects}/400 = ${fmt(100 * rejects / 400, 1)}% — that fraction is ` +
+        `the test's power at this effect size, σ and n.`;
+  }
+
+  slider('tt-d', 1, v => { delta = v; drawMain(); });
+  slider('tt-s', 1, v => { sigma = v; drawMain(); });
+  slider('tt-n', 0, v => { n = v; drawMain(); });
+  $('tt-draw').addEventListener('click', drawSample);
+  $('tt-many').addEventListener('click', runMany);
+  onRedraw(drawMain);
+  onRedraw(drawPHist);
+})();
+</script>
+</body>
+</html>

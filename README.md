@@ -17,8 +17,10 @@ into the *t*-test.
 | `src/stats.c`           | Descriptive statistics (Welford), one-sample & Welch *t*-tests  | paper §5      |
 | `app/simulate.c`        | Driver: theoretical vs. empirical moments, *t*-test demos       | paper §6      |
 | `tests/test_probsim.c`  | Unit tests: CDF spot values, moment checks, *t*-test fixtures   | paper §6      |
-| `paper/probsim.tex`      | Companion paper (LaTeX)                                         | —             |
-| `paper/references.bib`   | Bibliography (BibTeX)                                           | —             |
+| `paper/probsim.tex`     | Companion paper (LaTeX)                                         | —             |
+| `paper/references.bib`  | Bibliography (BibTeX)                                           | —             |
+| `docs/index.html`       | Interactive web version of the paper (GitHub Pages)             | —             |
+| `docs/probsim.pdf`      | Built copy of the paper, served alongside the site              | —             |
 | `refs/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
 | `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `refs/`           | —             |
 
@@ -42,6 +44,26 @@ Requirements: any C99 compiler (`gcc`/`clang`), `make`; for the paper,
 
 The library uses only the C99 standard library (`math.h` incl. `lgamma`,
 `erf`); no external dependencies.
+
+## Web version (GitHub Pages)
+
+`docs/index.html` is a self-contained interactive edition of the paper —
+same sections and worked examples, but every figure is animated (family
+tree, inverse-transform sampling, polar Box–Muller, density explorers,
+and a live *t*-test playground).  It needs no build step and no network
+resources.  To publish it:
+
+1. Push this repository to GitHub.
+2. In the repo: *Settings → Pages → Deploy from a branch → `main` /
+   `docs`*.
+3. Edit the `REPO_URL` constant at the top of the `<script>` block in
+   `docs/index.html` so the site's "code" links point at your repository.
+
+The site links to `docs/probsim.pdf` (a committed copy of the built
+paper) so the full narrative is always one click away; after editing the
+paper, run `make docs` and copy `paper/probsim.pdf` over
+`docs/probsim.pdf` to keep the two in sync.  The paper links back to the
+site from each figure it animates.
 
 ## Distributions covered
 
