@@ -252,8 +252,11 @@ p.hist b { color: var(--ink); }
     through the inverse CDF, <em>X</em> = <em>F</em><sup>−1</sup>(<em>U</em>).
     Watch it below: each uniform draw enters on the vertical axis, reflects off
     the CDF, and lands on the horizontal axis — where the curve is steep, the
-    landings crowd together, and the histogram grows into an exponential
-    density.
+    landings crowd together, and the histogram grows into the target
+    density.  The <em>target F</em> selector makes the generality vivid:
+    the same one-uniform trick manufactures the exponential, the Rayleigh
+    of the birthday bound, and the Gumbel of extreme values, just by
+    swapping the curve.
   </p>
   <p class="hist">
     <b>Where they come from:</b> the uniform is classical probability's
@@ -270,6 +273,12 @@ p.hist b { color: var(--ink); }
     <button id="inv-play">play</button>
     <button id="inv-step">step</button>
     <button id="inv-reset">reset</button>
+    <label>target F
+      <select id="inv-dist">
+        <option value="exp" selected>exponential</option>
+        <option value="ray">Rayleigh</option>
+        <option value="gum">Gumbel</option>
+      </select></label>
     <label>rate λ <input type="range" id="inv-lam" min="0.4" max="2" step="0.1"
            value="1"> <span class="val" id="inv-lam-v">1.0</span></label>
     <span class="readout" id="inv-count">0 draws</span>
@@ -476,6 +485,31 @@ p.hist b { color: var(--ink); }
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_normal()</code></a>
     · Box &amp; Muller (1958)</p>
 
+  <h3 id="clt">The central limit theorem, live</h3>
+  <p>
+    Why the normal is everywhere: average <em>n</em> draws from
+    <em>any</em> light-tailed source — however skewed or lumpy — then
+    standardize, and the distribution of those averages approaches
+    <em>N</em>(0,1).  Pick an ugly source, start at n = 1 to see its raw
+    shape, then double n and watch the histogram get pulled into the bell.
+  </p>
+  <div class="viz"><canvas id="cv-clt" height="260"></canvas></div>
+  <div class="controls">
+    <label>source
+      <select id="clt-src">
+        <option value="uniform" selected>uniform(0,1)</option>
+        <option value="exponential">exponential(1) — skewed</option>
+        <option value="gammaHalf">gamma(½, 1) — very skewed</option>
+        <option value="betaU">beta(½, ½) — U-shaped</option>
+      </select></label>
+    <label>n per average <input type="range" id="clt-n" min="0" max="6"
+      step="1" value="0"> <span class="val" id="clt-n-v">1</span></label>
+    <button id="clt-run">add 400 averages</button>
+    <span class="readout" id="clt-read"></span>
+  </div>
+  <p class="xref"><b>Paper:</b> §4.3 — <a href="probsim.pdf">PDF</a>
+    · Laplace (1812), de Moivre (1738)</p>
+
   <h3 id="gamma">Gamma — accumulated waiting</h3>
   <p>
     Shape <em>k</em> = 1 is the exponential; integer <em>k</em> is the wait for
@@ -510,7 +544,9 @@ p.hist b { color: var(--ink); }
     distribution for a probability.  The buttons run the conjugate update
     that powers Bayesian A/B tests and Thompson-sampling bandits: observe a
     success and <em>a</em> gains one; observe a failure and <em>b</em> does.
-    Watch certainty sharpen as evidence accumulates.
+    Better still, run the whole learning loop: set a <em>hidden true p</em>
+    (the green line), press "observe 20 from true p" a few times, and
+    watch the posterior find the truth and sharpen around it.
   </p>
   <p class="hist"><b>History:</b> the oldest posterior in statistics —
     Bayes's 1763 essay computed exactly this update for an unknown chance
@@ -527,6 +563,9 @@ p.hist b { color: var(--ink); }
       <span class="val" id="bet-b-v">5.0</span></label>
     <button id="bet-succ">observe success</button>
     <button id="bet-fail">observe failure</button>
+    <label>hidden true p <input type="range" id="bet-p" min="0.05" max="0.95"
+      step="0.05" value="0.35"> <span class="val" id="bet-p-v">0.35</span></label>
+    <button id="bet-sim">observe 20 from true p</button>
     <button id="bet-reset">reset to Beta(2,5)</button>
     <button id="bet-sample">draw 400 samples</button>
     <span class="readout" id="bet-read"></span>
@@ -620,7 +659,10 @@ p.hist b { color: var(--ink); }
     about 1.25·2^(n/2) evaluations.  That is the <em>birthday bound</em>:
     the reason a 128-bit hash is collision-broken at 2⁶⁴ work, and the √N
     running time of Pollard's rho.  Run the experiment below and watch the
-    Rayleigh curve materialise out of raw collision counts.
+    Rayleigh curve materialise out of raw collision counts — then flip on
+    <em>√N collapse</em>, change the hash size, and keep running: trials
+    from every N land on the same universal Rayleigh(1) curve, which is
+    what "scaling limit" means.
   </p>
   <p class="hist"><b>History:</b> Lord Rayleigh derived it in 1880 for the
     amplitude of many superposed sound waves of random phase — a 2-D
@@ -631,6 +673,7 @@ p.hist b { color: var(--ink); }
     <label>hash bits n <input type="range" id="ray-bits" min="8" max="16"
       step="1" value="12"> <span class="val" id="ray-bits-v">12</span></label>
     <button id="ray-run">run 400 birthday trials</button>
+    <button id="ray-scale">√N collapse: off</button>
     <span class="readout" id="ray-read"></span>
   </div>
   <p class="xref"><b>Paper:</b> §4.9 — <a href="probsim.pdf">PDF</a>
@@ -1332,42 +1375,60 @@ function slider(id, digits, fn) {
  * ================================================================== */
 (function inversePanel() {
   const cv = $('cv-inverse');
-  const BINS = 40, XMAX = 4;
-  let lam = 1, hist = new Array(BINS).fill(0), total = 0;
+  const BINS = 44;
+  let lam = 1, dist = 'exp', hist = new Array(BINS).fill(0), total = 0;
   let playing = false, marker = null;    /* {u, x, phase 0..2} */
 
-  const F = x => 1 - Math.exp(-lam * x);
-  const Finv = u => -Math.log(1 - u) / lam;
+  /* Three closed-form inverse CDFs — the same one-uniform trick each
+   * time; λ acts as the rate/inverse-scale for all of them. */
+  const DISTS = {
+    exp: { name: () => `F(x) = 1 − e^(−${fmt(lam, 1)}x)  (exponential)`,
+           xmin: 0,
+           F: x => 1 - Math.exp(-lam * x),
+           Finv: u => -Math.log(1 - u) / lam },
+    ray: { name: () => `Rayleigh, σ = ${fmt(1 / lam, 2)}`,
+           xmin: 0,
+           F: x => x <= 0 ? 0 : 1 - Math.exp(-0.5 * lam * lam * x * x),
+           Finv: u => Math.sqrt(-2 * Math.log(1 - u)) / lam },
+    gum: { name: () => `Gumbel, μ = 1, β = ${fmt(1 / lam, 2)}`,
+           xmin: -2,
+           F: x => Math.exp(-Math.exp(-lam * (x - 1))),
+           Finv: u => 1 - Math.log(-Math.log(u)) / lam },
+  };
+  const XMAX = 4;
+  const cur = () => DISTS[dist];
 
   function draw() {
-    const ch = chart(cv, 360, { xmin: 0, xmax: XMAX, ymin: 0, ymax: 1.06 });
+    const xmin = cur().xmin;
+    const ch = chart(cv, 360, { xmin, xmax: XMAX, ymin: 0, ymax: 1.06 });
     ch.clear();
-    ch.axes(niceTicks(0, XMAX, 5), [0, 0.5, 1]);
+    ch.axes(niceTicks(xmin, XMAX, 5), [0, 0.5, 1]);
     /* histogram of landings (rescaled so the tallest bar is 60% high) */
     const peak = Math.max(...hist, 1);
     ch.ctx.fillStyle = cssv('--blue-soft');
-    const bw = XMAX / BINS;
+    const bw = (XMAX - xmin) / BINS;
     hist.forEach((c, i) => {
       if (!c) return;
       const hgt = 0.62 * c / peak;
-      ch.ctx.fillRect(ch.X(i * bw) + 1, ch.Y(hgt),
-                      ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(hgt));
+      ch.ctx.fillRect(ch.X(xmin + i * bw) + 1, ch.Y(hgt),
+                      ch.X(bw + xmin) - ch.X(xmin) - 2, ch.Y(0) - ch.Y(hgt));
     });
-    ch.curve(F, cssv('--blue'));
-    /* top-left is clear of the curve for every λ on this slider */
-    ch.label(`F(x) = 1 − e^(−${fmt(lam, 1)}x)`, XMAX * 0.04, 1.0,
-             cssv('--blue'));
+    ch.curve(cur().F, cssv('--blue'));
+    /* top-left is clear of these rising CDFs for every λ on the slider */
+    ch.label(cur().name(), xmin + (XMAX - xmin) * 0.04, 1.0, cssv('--blue'));
     if (total)
-      ch.label('landings (histogram)', XMAX * 0.55, 0.10, cssv('--muted'));
+      ch.label('landings (histogram)', xmin + (XMAX - xmin) * 0.55, 0.10,
+               cssv('--muted'));
     if (marker) {
       const { u, x, phase } = marker;
+      const xmin2 = cur().xmin;
       const red = cssv('--red');
       ch.ctx.strokeStyle = red; ch.ctx.lineWidth = 1.8;
       ch.ctx.setLineDash([5, 4]);
-      /* horizontal ray from (0,u) toward the curve, then drop to axis */
-      const hx = Math.min(phase, 1) * x;
+      /* horizontal ray from the y-axis toward the curve, then drop down */
+      const hx = xmin2 + Math.min(phase, 1) * (x - xmin2);
       ch.ctx.beginPath();
-      ch.ctx.moveTo(ch.X(0), ch.Y(u));
+      ch.ctx.moveTo(ch.X(xmin2), ch.Y(u));
       ch.ctx.lineTo(ch.X(hx), ch.Y(u));
       ch.ctx.stroke();
       if (phase > 1) {
@@ -1380,19 +1441,24 @@ function slider(id, digits, fn) {
       ch.ctx.setLineDash([]);
       ch.ctx.fillStyle = red;
       ch.ctx.beginPath();
-      ch.ctx.arc(ch.X(0), ch.Y(u), 3.4, 0, 7); ch.ctx.fill();
-      ch.label('U', 0.06, u + 0.03, red);
+      ch.ctx.arc(ch.X(xmin2), ch.Y(u), 3.4, 0, 7); ch.ctx.fill();
+      ch.label('U', xmin2 + (XMAX - xmin2) * 0.015, u + 0.03, red);
     }
     $('inv-count').textContent = `${total} draws`;
   }
 
   function commit(x) {
-    const b = Math.min(BINS - 1, Math.floor(x / (XMAX / BINS)));
+    const xmin = cur().xmin;
+    const b = Math.min(BINS - 1,
+      Math.max(0, Math.floor((x - xmin) / ((XMAX - xmin) / BINS))));
     hist[b]++; total++;
   }
   function newMarker() {
-    const u = Math.random();
-    return { u, x: Math.min(Finv(u), XMAX), phase: 0 };
+    let u;
+    do { u = Math.random(); } while (u === 0);   /* Gumbel needs u > 0 */
+    return { u,
+             x: Math.max(cur().xmin, Math.min(cur().Finv(u), XMAX)),
+             phase: 0 };
   }
   function tick() {
     if (!playing) return;
@@ -1418,6 +1484,10 @@ function slider(id, digits, fn) {
   });
   slider('inv-lam', 1, v => {
     lam = v; hist.fill(0); total = 0; marker = null; draw();
+  });
+  $('inv-dist').addEventListener('change', ev => {
+    dist = ev.target.value;
+    hist.fill(0); total = 0; marker = null; draw();
   });
   onRedraw(draw);
 })();
@@ -1827,6 +1897,13 @@ function densityPanel(cvId, h, getState, spec) {
     (sp.labels || []).forEach(([txt, x, y, color]) =>
       /* y = 0 means "auto": park the label near the top, clear of the axis */
       ch.label(txt, x, y === 0 ? ymax * 0.88 : y, cssv(color || '--blue')));
+    /* reference marks (e.g. the hidden true p in the beta learning demo) */
+    (sp.marks || []).forEach(m => {
+      ch.vline(m.x, cssv(m.color || '--green'), { width: 2 });
+      if (m.label)
+        ch.label(m.label, m.x + (xmax - xmin) * 0.012, ymax * 0.72,
+                 cssv(m.color || '--green'));
+    });
 
     if (hoverX !== null) {
       ch.vline(hoverX, cssv('--muted'), { dash: [3, 3] });
@@ -1913,15 +1990,27 @@ function densityPanel(cvId, h, getState, spec) {
 
 /* Beta with conjugate-update buttons */
 (function () {
-  let a = 2, b = 5, obs = 0;
-  const panel = densityPanel('cv-beta', 260, () => ({ a, b }), s => ({
+  let a = 2, b = 5, obs = 0, trueP = 0.35;
+  const panel = densityPanel('cv-beta', 260, () => ({ a, b, trueP }), s => ({
     xmax: 1,
     f: x => betaPdf(x, s.a, s.b),
     cdf: x => incbeta(x, s.a, s.b),
     sampler: () => betaSample(s.a, s.b),
     labels: [[`Beta(${fmt(s.a, 1)}, ${fmt(s.b, 1)})`, 0.62, 0, '--blue']],
+    marks: [{ x: s.trueP, color: '--green', label: 'true p' }],
   }));
   $('bet-sample').addEventListener('click', () => panel.addSamples(400));
+  slider('bet-p', 2, v => { trueP = v; panel.draw(); });
+  $('bet-sim').addEventListener('click', () => {
+    /* the Bayesian learning loop: 20 Bernoulli(trueP) observations */
+    let s = 0;
+    for (let i = 0; i < 20; i++) if (Math.random() < trueP) s++;
+    a += s; b += 20 - s; obs += 20;
+    aS.value = Math.min(a, 12); bS.value = Math.min(b, 12);
+    $('bet-a-v').textContent = fmt(a, 1);
+    $('bet-b-v').textContent = fmt(b, 1);
+    drawRead();
+  });
   const aS = slider('bet-a', 1, v => { a = v; obs = 0; drawRead(); });
   const bS = slider('bet-b', 1, v => { b = v; obs = 0; drawRead(); });
   function drawRead() {
@@ -2046,20 +2135,36 @@ function histWithCurve(cv, h, samples, xmin, xmax, f, labels) {
     ch.label(txt, x, y === 0 ? ymax * 0.88 : y, cssv(color || '--blue')));
 }
 
-/* Rayleigh: the birthday experiment against an ideal 2^bits-bin hash. */
+/* Rayleigh: the birthday experiment against an ideal 2^bits-bin hash.
+ * Trials are kept per hash size; the √N-collapse view rescales every
+ * trial by its own √N so all sizes land on the universal Rayleigh(1). */
 (function rayleighPanel() {
   const cv = $('cv-rayleigh');
-  let bits = 12, samples = [];
-  function xmax() { return 3.2 * Math.sqrt(2 ** bits); }
+  let bits = 12, scaled = false;
+  const samples = [];               /* {t, nbits} — kept across N changes */
   function draw() {
-    const s = Math.sqrt(2 ** bits);   /* Rayleigh scale = sqrt(N) */
-    histWithCurve(cv, 260, samples, 0, xmax(),
-      x => rayleighPdf(x, s),
-      [[`Rayleigh(√N), N = 2^${bits}`, xmax() * 0.55, 0]]);
-    const mean = s * Math.sqrt(Math.PI / 2);
-    $('ray-read').textContent = samples.length
-      ? `observed mean ${fmt(summarize(samples).mean, 1)} vs theory ` +
-        `√(πN/2) = ${fmt(mean, 1)} (${samples.length} trials)`
+    if (scaled) {
+      const zs = samples.map(s => s.t / Math.sqrt(2 ** s.nbits));
+      const sizes = new Set(samples.map(s => s.nbits)).size;
+      histWithCurve(cv, 260, zs, 0, 3.2,
+        x => rayleighPdf(x, 1),
+        [['T/√N vs the universal Rayleigh(1)', 1.75, 0]]);
+      $('ray-read').textContent = samples.length
+        ? `${samples.length} trials from ${sizes} hash size${sizes > 1 ? 's' : ''} — ` +
+          `one curve fits them all`
+        : 'run trials at several hash sizes, then compare';
+      return;
+    }
+    const mine = samples.filter(s => s.nbits === bits).map(s => s.t);
+    const sc = Math.sqrt(2 ** bits);  /* Rayleigh scale = sqrt(N) */
+    const xmax = 3.2 * sc;
+    histWithCurve(cv, 260, mine, 0, xmax,
+      x => rayleighPdf(x, sc),
+      [[`Rayleigh(√N), N = 2^${bits}`, xmax * 0.55, 0]]);
+    const mean = sc * Math.sqrt(Math.PI / 2);
+    $('ray-read').textContent = mine.length
+      ? `observed mean ${fmt(summarize(mine).mean, 1)} vs theory ` +
+        `√(πN/2) = ${fmt(mean, 1)} (${mine.length} trials at this N)`
       : `theory: first collision after about √(πN/2) = ${fmt(mean, 1)} draws`;
   }
   function trial() {
@@ -2071,10 +2176,71 @@ function histWithCurve(cv, h, samples, xmin, xmax, f, labels) {
     }
   }
   $('ray-run').addEventListener('click', () => {
-    for (let i = 0; i < 400; i++) samples.push(trial());
+    for (let i = 0; i < 400; i++) samples.push({ t: trial(), nbits: bits });
     draw();
   });
-  slider('ray-bits', 0, v => { bits = v; samples = []; draw(); });
+  $('ray-scale').addEventListener('click', () => {
+    scaled = !scaled;
+    $('ray-scale').textContent = `√N collapse: ${scaled ? 'on' : 'off'}`;
+    draw();
+  });
+  slider('ray-bits', 0, v => { bits = v; draw(); });
+  onRedraw(draw);
+})();
+
+/* The central limit theorem, live: standardized means of any source
+ * against N(0,1) (paper §4.3). */
+(function cltPanel() {
+  const cv = $('cv-clt');
+  const SRC = {
+    uniform:     { label: 'uniform(0,1)',   mean: 0.5, sd: Math.sqrt(1 / 12),
+                   draw: () => Math.random() },
+    exponential: { label: 'exponential(1)', mean: 1,   sd: 1,
+                   draw: () => -Math.log(1 - Math.random()) },
+    gammaHalf:   { label: 'gamma(½, 1)',    mean: 0.5, sd: Math.sqrt(0.5),
+                   draw: () => gammaSample(0.5, 1) },
+    betaU:       { label: 'beta(½, ½)',     mean: 0.5, sd: Math.sqrt(1 / 8),
+                   draw: () => betaSample(0.5, 0.5) },
+  };
+  let src = 'uniform', n = 1, samples = [], queue = 0, animating = false;
+  function draw() {
+    histWithCurve(cv, 260, samples, -4, 4, normalPdf,
+      [[`standardized means: ${SRC[src].label}, n = ${n}`, -3.85, 0, '--ink2'],
+       ['N(0,1)', 1.35, normalPdf(1.35) + 0.02, '--blue']]);
+    $('clt-read').textContent = samples.length
+      ? `${samples.length} averages — mean ${fmt(summarize(samples).mean, 2)}, ` +
+        `sd ${fmt(summarize(samples).sd, 2)} (target 0 and 1)`
+      : 'press "add 400 averages" — with n = 1 you see the raw source shape';
+  }
+  function pump() {
+    if (queue <= 0) { animating = false; draw(); return; }
+    const step = REDUCED_MOTION ? queue : Math.min(20, queue);
+    const s = SRC[src];
+    for (let i = 0; i < step; i++) {
+      let sum = 0;
+      for (let j = 0; j < n; j++) sum += s.draw();
+      samples.push((sum / n - s.mean) / (s.sd / Math.sqrt(n)));
+    }
+    queue -= step;
+    draw();
+    if (queue > 0) requestAnimationFrame(pump);
+    else animating = false;
+  }
+  $('clt-run').addEventListener('click', () => {
+    queue += 400;
+    if (!animating) { animating = true; requestAnimationFrame(pump); }
+  });
+  $('clt-src').addEventListener('change', ev => {
+    src = ev.target.value; samples = []; queue = 0; draw();
+  });
+  const nEl = $('clt-n');
+  const nUpd = () => {
+    n = 2 ** Number(nEl.value);
+    $('clt-n-v').textContent = String(n);
+    samples = []; queue = 0; draw();
+  };
+  nEl.addEventListener('input', nUpd);
+  nUpd();
   onRedraw(draw);
 })();
 
