@@ -25,11 +25,31 @@ external table:
      forces P primitive, which is precisely the single-full-cycle
      theorem of paper §2.2.
 
-Usage:  python3 scripts/charpoly.py        (runs in a few seconds)
+Usage:  python3 scripts/charpoly.py        (runs in under a second)
+
+The answer, for the reader who does not run it (and asserted against the
+derivation below, so this docstring cannot silently rot): P(x) is a
+degree-256, weight-115 polynomial over GF(2) -- an odd weight, as every
+irreducible binary polynomial must have -- whose coefficients, packed
+with bit i holding the coefficient of x^i, are
+
+    0x1_0003c03c_3f3ecb19_04b4edcf_26259f85
+      _0280002b_cefd1a5e_9d116f2b_b0f0f001
+
+i.e. P(x) = x^256 + x^241 + x^240 + ... + x^12 + ... + 1 (115 terms; the
+leading x^256 is the top hex digit's 1, the trailing +1 the bottom
+digit's).  This is the polynomial printed in paper §2.2.
 
 Theory background: Lidl & Niederreiter, "Finite Fields"; the engine and
 its design are from Blackman & Vigna (2021) -- see paper/references.bib.
 """
+
+# The documented answer (see docstring).  main() derives P independently
+# and asserts equality, so a change to the engine in src/rng.c that is
+# not mirrored here -- or vice versa -- fails loudly.
+EXPECTED_P = int(
+    "1" "0003c03c" "3f3ecb19" "04b4edcf" "26259f85"
+        "0280002b" "cefd1a5e" "9d116f2b" "b0f0f001", 16)
 
 M64 = (1 << 64) - 1
 
@@ -151,6 +171,11 @@ def main() -> None:
     for q in primes:
         assert ppowmod(order // q, P, DEG) != 1, \
             f"order divides (2^256-1)/{q}: P is not primitive"
+
+    # 5. The derivation must agree with the documented answer up top.
+    assert P == EXPECTED_P, \
+        "derived polynomial differs from EXPECTED_P in this file's " \
+        "docstring — engine mirror and documentation are out of sync"
 
     weight = bin(P).count("1")
     print("characteristic polynomial of the xoshiro256 engine over GF(2):")
