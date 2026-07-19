@@ -441,6 +441,14 @@ p.hist b { color: var(--ink); }
 
 <section class="panel" id="continuous">
   <h2>4 · The continuous family: measurements</h2>
+  <p class="note">
+    <b>Explore:</b> hover (or tap-drag) any curve below to read off the
+    density and the cumulative probability P(X ≤ x) at your cursor — the
+    area up to it shades live — and press <em>draw&nbsp;400 samples</em>
+    to watch a simulated histogram assemble under the theoretical curve.
+    Samples come from the same algorithms as the C library; they reset
+    whenever you move a parameter.
+  </p>
 
   <h3 id="normal">Normal — the polar Box–Muller sampler</h3>
   <p>
@@ -489,6 +497,7 @@ p.hist b { color: var(--ink); }
     <label>scale θ <input type="range" id="gam-t" min="0.5" max="3" step="0.25"
       value="1"> <span class="val" id="gam-t-v">1.00</span></label>
     <button id="gam-sweep">animate k</button>
+    <button id="gam-sample">draw 400 samples</button>
     <span class="readout" id="gam-read"></span>
   </div>
   <p class="xref"><b>Paper:</b> §4.4 &amp; Figure 6 — <a href="probsim.pdf">PDF</a>
@@ -519,6 +528,7 @@ p.hist b { color: var(--ink); }
     <button id="bet-succ">observe success</button>
     <button id="bet-fail">observe failure</button>
     <button id="bet-reset">reset to Beta(2,5)</button>
+    <button id="bet-sample">draw 400 samples</button>
     <span class="readout" id="bet-read"></span>
   </div>
   <p class="xref"><b>Paper:</b> §4.5 &amp; Figure 7 — <a href="probsim.pdf">PDF</a>
@@ -541,6 +551,7 @@ p.hist b { color: var(--ink); }
   <div class="controls">
     <label>df k <input type="range" id="chi-k" min="1" max="15" step="1" value="6">
       <span class="val" id="chi-k-v">6</span></label>
+    <button id="chi-sample">draw 400 samples</button>
     <span class="readout" id="chi-read"></span>
   </div>
   <p class="xref"><b>Paper:</b> §4.6 — <a href="probsim.pdf">PDF</a>
@@ -567,6 +578,7 @@ p.hist b { color: var(--ink); }
   <div class="controls">
     <label>df ν <input type="range" id="t-nu" min="1" max="30" step="1" value="3">
       <span class="val" id="t-nu-v">3</span></label>
+    <button id="t-sample">draw 400 samples</button>
     <span class="readout" id="t-read"></span>
   </div>
   <p class="xref"><b>Paper:</b> §4.7 &amp; Figure 8 — <a href="probsim.pdf">PDF</a>
@@ -593,6 +605,7 @@ p.hist b { color: var(--ink); }
       <span class="val" id="f-d1-v">5</span></label>
     <label>d₂ <input type="range" id="f-d2" min="1" max="20" step="1" value="12">
       <span class="val" id="f-d2-v">12</span></label>
+    <button id="f-sample">draw 400 samples</button>
     <span class="readout" id="f-read"></span>
   </div>
   <p class="xref"><b>Paper:</b> §4.8 — <a href="probsim.pdf">PDF</a>
@@ -676,6 +689,7 @@ p.hist b { color: var(--ink); }
     <label>n <input type="range" id="tt-n" min="5" max="100" step="1" value="20">
       <span class="val" id="tt-n-v">20</span></label>
     <button id="tt-draw">draw sample &amp; test</button>
+    <button id="tt-auto">auto-resample: off</button>
     <button id="tt-many">run 400 tests</button>
   </div>
   <p class="readout" id="tt-read">Press “draw sample &amp; test”.</p>
@@ -945,6 +959,32 @@ const gumbelPdf = (x, mu, b) => {
   return Math.exp(-(z + Math.exp(-z))) / b;
 };
 
+/* Regularized lower incomplete gamma P(a,x) — port of src/special.c:
+ * ps_incgamma_lower() (series for x < a+1, Lentz fraction above). */
+function incgammaP(a, x) {
+  if (x <= 0) return 0;
+  if (x < a + 1) {
+    let ap = a, sum = 1 / a, del = sum;
+    for (let n = 1; n <= 300; n++) {
+      ap += 1; del *= x / ap; sum += del;
+      if (Math.abs(del) < Math.abs(sum) * 1e-15) break;
+    }
+    return sum * Math.exp(-x + a * Math.log(x) - lgamma(a));
+  }
+  let b = x + 1 - a, c = 1e300, d = 1 / b, hh = d;
+  for (let i = 1; i <= 300; i++) {
+    const an = -i * (i - a);
+    b += 2;
+    d = an * d + b; if (Math.abs(d) < 1e-300) d = 1e-300;
+    c = b + an / c; if (Math.abs(c) < 1e-300) c = 1e-300;
+    d = 1 / d;
+    const del = d * c;
+    hh *= del;
+    if (Math.abs(del - 1) < 1e-15) break;
+  }
+  return 1 - hh * Math.exp(-x + a * Math.log(x) - lgamma(a));
+}
+
 /* Polar Box–Muller — port of src/dist.c: ps_normal() (Math.random is the
  * browser's stand-in for ps_runif). */
 function randNormal() {
@@ -956,6 +996,33 @@ function randNormal() {
   } while (s >= 1 || s === 0);
   return v1 * Math.sqrt(-2 * Math.log(s) / s);
 }
+
+/* Samplers mirroring src/dist.c, for the check-the-curve overlays:
+ * Marsaglia–Tsang gamma (ps_gamma) and its derived family. */
+function gammaSample(k, th) {
+  if (k < 1) {
+    let u;
+    do { u = Math.random(); } while (u === 0);
+    return gammaSample(k + 1, th) * Math.pow(u, 1 / k);
+  }
+  const d = k - 1 / 3, c = 1 / Math.sqrt(9 * d);
+  for (;;) {
+    let z, v;
+    do { z = randNormal(); v = 1 + c * z; } while (v <= 0);
+    v = v * v * v;
+    const u = Math.random();
+    if (u < 1 - 0.0331 * z * z * z * z) return d * v * th;
+    if (Math.log(u) < 0.5 * z * z + d * (1 - v + Math.log(v)))
+      return d * v * th;
+  }
+}
+const chi2Sample = k => gammaSample(k / 2, 2);
+const betaSample = (a, b) => {
+  const g1 = gammaSample(a, 1), g2 = gammaSample(b, 1);
+  return g1 / (g1 + g2);
+};
+const tSample = nu => randNormal() / Math.sqrt(chi2Sample(nu) / nu);
+const fSample = (d1, d2) => (chi2Sample(d1) / d1) / (chi2Sample(d2) / d2);
 
 /* Welford summary — port of src/stats.c: ps_summarize(). */
 function summarize(xs) {
@@ -1471,8 +1538,11 @@ function pmfPanel(cvId, readId, opts) {
     ch.stems(data, cssv(opts.color));
     if (hoverK !== null && hoverK <= kmax) {
       ch.vline(hoverK, cssv('--muted'), { dash: [3, 3] });
+      let cum = 0;
+      for (let i = 0; i <= hoverK; i++) cum += data[i][1];
       $(readId).textContent =
-        `P[X = ${hoverK}] = ${fmt(data[hoverK][1], 4)}   ·   ${opts.moments(params)}`;
+        `P[X = ${hoverK}] = ${fmt(data[hoverK][1], 4)}   ·   ` +
+        `P[X ≤ ${hoverK}] = ${fmt(cum, 4)}   ·   ${opts.moments(params)}`;
     } else {
       $(readId).textContent = opts.moments(params);
     }
@@ -1696,38 +1766,124 @@ pmfPanel('cv-negbin', 'nb-read', {
 /* ================================================================== *
  *  Panels: continuous density explorers (paper Figures 5–7, §4)
  * ================================================================== */
+/*
+ * Exploration-oriented density panel.  Beyond drawing the curve it
+ * offers, when the spec provides the hooks:
+ *   cdf(x)     — hover crosshair: the area up to the cursor is shaded
+ *                and the readout shows x, density, and P(X ≤ x);
+ *   sampler()  — a "draw samples" button streams simulated points into
+ *                a histogram behind the curve (animated in small chunks;
+ *                all at once under prefers-reduced-motion).
+ * Returns {draw, clear, addSamples}; parameter changes should call
+ * clear() so stale samples never masquerade as the new distribution.
+ */
 function densityPanel(cvId, h, getState, spec) {
   const cv = $(cvId);
+  let hoverX = null, samples = [], queue = 0, animating = false;
+
+  const frameSpec = () => {
+    const sp = spec(getState());
+    return { xmin: sp.xmin ?? 0, ...sp };
+  };
+
   function draw() {
-    const st = getState();
-    const { xmax, f, labels, shade } = spec(st);
+    const sp = frameSpec();
+    const { xmin, xmax, f } = sp;
     let ymax = 0;
     for (let i = 1; i <= 200; i++)
-      ymax = Math.max(ymax, f(xmax * i / 200));
+      ymax = Math.max(ymax, f(xmin + (xmax - xmin) * i / 200));
     ymax = Math.min(ymax * 1.12, 3.2) || 1;
-    const xmin = spec(st).xmin ?? 0;
     const ch = chart(cv, h, { xmin, xmax, ymin: 0, ymax });
     ch.clear();
     ch.axes(niceTicks(xmin, xmax, 6), niceTicks(0, ymax, 3));
-    (shade || []).forEach(([a, b]) =>
+
+    /* simulated histogram, behind everything (bars clamped to the frame
+     * so the axis stays put while samples stream in) */
+    if (samples.length) {
+      const BINS = 40, bw = (xmax - xmin) / BINS;
+      const counts = new Array(BINS).fill(0);
+      samples.forEach(v => {
+        const b = Math.floor((v - xmin) / bw);
+        if (b >= 0 && b < BINS) counts[b]++;
+      });
+      ch.ctx.fillStyle = cssv('--blue-soft');
+      counts.forEach((c, i) => {
+        const d = Math.min(c / samples.length / bw, ymax);
+        if (!d) return;
+        ch.ctx.fillRect(ch.X(xmin + i * bw) + 1, ch.Y(d),
+                        ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(d));
+      });
+      ch.label(`${samples.length} simulated draws`, xmax * 0.97, ymax * 0.78,
+               cssv('--muted'), 'right');
+    }
+
+    if (hoverX !== null && sp.cdf)
+      ch.fillUnder(f, xmin, hoverX, cssv('--blue-soft'));
+    (sp.shade || []).forEach(([a, b]) =>
       ch.fillUnder(f, a, b, cssv('--red-soft')));
-    (spec(st).extra || []).forEach(e =>
+    (sp.extra || []).forEach(e =>
       ch.curve(e.f, cssv(e.color), { dash: e.dash || [] }));
     ch.curve(f, cssv('--blue'));
-    (labels || []).forEach(([txt, x, y, color]) =>
+    (sp.labels || []).forEach(([txt, x, y, color]) =>
       /* y = 0 means "auto": park the label near the top, clear of the axis */
       ch.label(txt, x, y === 0 ? ymax * 0.88 : y, cssv(color || '--blue')));
+
+    if (hoverX !== null) {
+      ch.vline(hoverX, cssv('--muted'), { dash: [3, 3] });
+      const bits = [`x = ${fmt(hoverX, 2)}`, `density ${fmt(f(hoverX), 3)}`];
+      if (sp.cdf) bits.push(`P(X ≤ x) = ${fmt(sp.cdf(hoverX), 3)}`);
+      ch.ctx.fillStyle = cssv('--ink2');
+      ch.ctx.font = '600 12px system-ui, sans-serif';
+      ch.ctx.textAlign = 'left';
+      ch.ctx.fillText(bits.join('    '), ch.m.l + 6, 13);
+    }
   }
+
+  /* hover exploration (pointer events cover mouse and touch) */
+  const probe = ev => {
+    const sp = frameSpec();
+    const rect = cv.getBoundingClientRect();
+    const frac = (ev.clientX - rect.left - 40) / (rect.width - 52);
+    const x = sp.xmin + frac * (sp.xmax - sp.xmin);
+    hoverX = (x > sp.xmin && x < sp.xmax) ? x : null;
+    draw();
+  };
+  cv.addEventListener('pointermove', probe);
+  cv.addEventListener('pointerdown', probe);
+  cv.addEventListener('pointerleave', () => { hoverX = null; draw(); });
+
+  /* streamed sample accumulation */
+  function pump() {
+    const sp = frameSpec();
+    if (!sp.sampler || queue <= 0) { animating = false; draw(); return; }
+    const step = REDUCED_MOTION ? queue : Math.min(25, queue);
+    for (let i = 0; i < step; i++) samples.push(sp.sampler());
+    queue -= step;
+    draw();
+    if (queue > 0) requestAnimationFrame(pump);
+    else animating = false;
+  }
+
+  const api = {
+    draw,
+    clear() { samples = []; queue = 0; draw(); },
+    addSamples(n) {
+      queue += n;
+      if (!animating) { animating = true; requestAnimationFrame(pump); }
+    },
+  };
   onRedraw(draw);
-  return draw;
+  return api;
 }
 
 /* Gamma */
 (function () {
   let k = 1, th = 1, sweeping = false;
-  const draw = densityPanel('cv-gamma', 260, () => ({ k, th }), s => ({
+  const panel = densityPanel('cv-gamma', 260, () => ({ k, th }), s => ({
     xmax: Math.max(8, s.k * s.th + 4 * Math.sqrt(s.k) * s.th),
     f: x => gammaPdf(x, s.k, s.th),
+    cdf: x => incgammaP(s.k, x / s.th),
+    sampler: () => gammaSample(s.k, s.th),
     labels: [[`Gamma(${fmt(s.k, 1)}, ${fmt(s.th, 2)})`,
               (s.k * s.th + 4 * Math.sqrt(s.k) * s.th) * 0.62, 0, '--blue']],
   }));
@@ -1735,8 +1891,9 @@ function densityPanel(cvId, h, getState, spec) {
     $('gam-read').textContent =
       `mean kθ = ${fmt(k * th, 2)}   variance kθ² = ${fmt(k * th * th, 2)}`;
   };
-  const kSlider = slider('gam-k', 1, v => { k = v; draw(); read(); });
-  slider('gam-t', 2, v => { th = v; draw(); read(); });
+  const kSlider = slider('gam-k', 1, v => { k = v; panel.clear(); read(); });
+  slider('gam-t', 2, v => { th = v; panel.clear(); read(); });
+  $('gam-sample').addEventListener('click', () => panel.addSamples(400));
   $('gam-sweep').addEventListener('click', () => {
     if (sweeping) { sweeping = false; return; }
     sweeping = true;
@@ -1745,7 +1902,7 @@ function densityPanel(cvId, h, getState, spec) {
       k = k >= 10 ? 0.3 : k + (REDUCED_MOTION ? 0.7 : 0.07);
       kSlider.value = k;
       $('gam-k-v').textContent = fmt(k, 1);
-      draw(); read();
+      panel.clear(); read();
       if (REDUCED_MOTION) setTimeout(step, 400);
       else requestAnimationFrame(step);
     };
@@ -1757,15 +1914,18 @@ function densityPanel(cvId, h, getState, spec) {
 /* Beta with conjugate-update buttons */
 (function () {
   let a = 2, b = 5, obs = 0;
-  const draw = densityPanel('cv-beta', 260, () => ({ a, b }), s => ({
+  const panel = densityPanel('cv-beta', 260, () => ({ a, b }), s => ({
     xmax: 1,
     f: x => betaPdf(x, s.a, s.b),
+    cdf: x => incbeta(x, s.a, s.b),
+    sampler: () => betaSample(s.a, s.b),
     labels: [[`Beta(${fmt(s.a, 1)}, ${fmt(s.b, 1)})`, 0.62, 0, '--blue']],
   }));
+  $('bet-sample').addEventListener('click', () => panel.addSamples(400));
   const aS = slider('bet-a', 1, v => { a = v; obs = 0; drawRead(); });
   const bS = slider('bet-b', 1, v => { b = v; obs = 0; drawRead(); });
   function drawRead() {
-    draw();
+    panel.clear();
     $('bet-read').textContent =
       `posterior mean a/(a+b) = ${fmt(a / (a + b), 3)}` +
       (obs ? `   ·   ${obs} observation${obs > 1 ? 's' : ''} added` : '');
@@ -1790,14 +1950,17 @@ function densityPanel(cvId, h, getState, spec) {
 /* Chi-squared */
 (function () {
   let k = 6;
-  const draw = densityPanel('cv-chi', 240, () => k, kk => ({
+  const panel = densityPanel('cv-chi', 240, () => k, kk => ({
     xmax: Math.max(10, kk + 5 * Math.sqrt(2 * kk)),
     f: x => chi2Pdf(x, kk),
+    cdf: x => incgammaP(kk / 2, x / 2),
+    sampler: () => chi2Sample(kk),
     labels: [[`χ² with ${kk} df  ( = Gamma(${fmt(kk / 2, 1)}, 2) )`,
               (kk + 5 * Math.sqrt(2 * kk)) * 0.5, 0, '--blue']],
   }));
+  $('chi-sample').addEventListener('click', () => panel.addSamples(400));
   slider('chi-k', 0, v => {
-    k = v; draw();
+    k = v; panel.clear();
     $('chi-read').textContent =
       `mean k = ${k}   variance 2k = ${2 * k}`;
   });
@@ -1806,16 +1969,19 @@ function densityPanel(cvId, h, getState, spec) {
 /* Student t vs normal, with tail readout */
 (function () {
   let nu = 3;
-  const draw = densityPanel('cv-t', 260, () => nu, n => ({
+  const panel = densityPanel('cv-t', 260, () => nu, n => ({
     xmin: -4.5, xmax: 4.5,
     f: x => tPdf(x, n),
+    cdf: x => tCdf(x, n),
+    sampler: () => tSample(n),
     shade: [[-4.5, -1.96], [1.96, 4.5]],
     extra: [{ f: normalPdf, color: '--muted', dash: [5, 4] }],
     labels: [[`t(${n})`, 2.2, tPdf(2.2, n) + 0.05, '--blue'],
              ['N(0,1)', 0.35, normalPdf(0.32) + 0.012, '--muted']],
   }));
+  $('t-sample').addEventListener('click', () => panel.addSamples(400));
   slider('t-nu', 0, v => {
-    nu = v; draw();
+    nu = v; panel.clear();
     const tail = 2 * (1 - tCdf(1.96, nu));
     $('t-read').textContent =
       `P(|T| > 1.96) = ${fmt(tail, 4)}  vs  0.0500 for the normal` +
@@ -1826,18 +1992,21 @@ function densityPanel(cvId, h, getState, spec) {
 /* Fisher F */
 (function () {
   let d1 = 5, d2 = 12;
-  const draw = densityPanel('cv-f', 240, () => ({ d1, d2 }), s => ({
+  const panel = densityPanel('cv-f', 240, () => ({ d1, d2 }), s => ({
     xmax: 5,
     f: x => fPdf(x, s.d1, s.d2),
+    cdf: x => incbeta(s.d1 * x / (s.d1 * x + s.d2), s.d1 / 2, s.d2 / 2),
+    sampler: () => fSample(s.d1, s.d2),
     labels: [[`F(${s.d1}, ${s.d2})`, 3.1, 0, '--blue']],
   }));
+  $('f-sample').addEventListener('click', () => panel.addSamples(400));
   const read = () => {
     $('f-read').textContent = d2 > 2
       ? `mean d₂/(d₂−2) = ${fmt(d2 / (d2 - 2), 3)}`
       : 'mean undefined for d₂ ≤ 2';
   };
-  slider('f-d1', 0, v => { d1 = v; draw(); read(); });
-  slider('f-d2', 0, v => { d2 = v; draw(); read(); });
+  slider('f-d1', 0, v => { d1 = v; panel.clear(); read(); });
+  slider('f-d2', 0, v => { d2 = v; panel.clear(); read(); });
 })();
 
 /* ================================================================== *
@@ -2110,6 +2279,21 @@ function histWithCurve(cv, h, samples, xmin, xmax, f, labels) {
   slider('tt-n', 0, v => { n = v; drawMain(); });
   $('tt-draw').addEventListener('click', drawSample);
   $('tt-many').addEventListener('click', runMany);
+  /* auto-resample: a fresh sample + test every ~0.45 s, to make the
+   * sampling distribution of the t statistic something you can watch.
+   * (Slower cadence under prefers-reduced-motion.) */
+  let auto = false, lastTick = 0;
+  function autoLoop(ts) {
+    if (!auto) return;
+    const period = REDUCED_MOTION ? 1500 : 450;
+    if (ts - lastTick > period) { lastTick = ts; drawSample(); }
+    requestAnimationFrame(autoLoop);
+  }
+  $('tt-auto').addEventListener('click', () => {
+    auto = !auto;
+    $('tt-auto').textContent = `auto-resample: ${auto ? 'on' : 'off'}`;
+    if (auto) requestAnimationFrame(autoLoop);
+  });
   onRedraw(drawMain);
   onRedraw(drawPHist);
 })();
