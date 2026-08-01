@@ -6,9 +6,9 @@
  *
  *     ./simulate [seed] [n]      (defaults: seed 20260718, n 200000)
  *
- * The program does two things:
+ * The program does three things:
  *
- *   1. Simulates n draws from each of the twelve classical distributions
+ *   1. Simulates n draws from each of the thirteen classical distributions
  *      and prints the sample mean/variance next to the theoretical
  *      values, so agreement is visible at a glance (law of large
  *      numbers in action, paper §6.1).
@@ -17,6 +17,11 @@
  *      a one-sample test where H0 is TRUE (the p-value should look
  *      uniform-ish, i.e. usually > 0.05) and a Welch test where H0 is
  *      FALSE (the p-value should be tiny) — paper §6.2.
+ *
+ *   3. Runs Tarone's overdispersion test on simulated sibships, where H0
+ *      (binomial: one coin for everyone) and H1 (beta-binomial: a coin
+ *      per family) differ by a correlation of 0.002 — and shows that
+ *      only registry-scale data can tell them apart (paper §3.6, §6.2).
  */
 #include "probsim.h"
 
@@ -50,6 +55,7 @@ static double d_chi_squared(ps_rng *r){ return ps_chi_squared(r, 6.0); }
 static double d_student_t(ps_rng *r)  { return ps_student_t(r, 8.0); }
 static double d_f(ps_rng *r)          { return ps_f(r, 5.0, 12.0); }
 static double d_negbin(ps_rng *r)     { return (double)ps_negative_binomial(r, 3, 0.4); }
+static double d_betabin(ps_rng *r)    { return (double)ps_beta_binomial(r, 20, 2.0, 5.0); }
 static double d_rayleigh(ps_rng *r)   { return ps_rayleigh(r, 2.0); }
 static double d_gumbel(ps_rng *r)     { return ps_gumbel(r, 0.5, 2.0); }
 
@@ -66,6 +72,8 @@ static void print_moments_table(ps_rng *rng, size_t n, double *buf)
         { "Normal(10, 2)",        10.0,       4.0,        d_normal      },
         { "Gamma(3, 2)",          6.0,        12.0,       d_gamma       },
         { "Beta(2, 5)",           2.0 / 7.0,  10.0/392.0, d_beta        },
+        /* Same mean as Binomial(20, 2/7), 3.4x the variance (paper §3.6). */
+        { "BetaBinom(20, 2, 5)",  40.0 / 7.0, 5400.0/392.0, d_betabin   },
         { "ChiSquared(6)",        6.0,        12.0,       d_chi_squared },
         { "StudentT(8)",          0.0,        8.0 / 6.0,  d_student_t   },
         { "F(5, 12)",             1.2,        1.08,       d_f           },
@@ -90,6 +98,35 @@ static void print_moments_table(ps_rng *rng, size_t n, double *buf)
         printf("%-20s %10.4f %10.4f   %10.4f %10.4f\n",
                rows[i].name, s.mean, rows[i].mean, s.var, rows[i].var);
     }
+}
+
+/*
+ * Sibship demo (paper §3.6, §5.4): simulate `families` sibships of
+ * `size` children each, either from one common coin (rho = 0) or from a
+ * per-family coin drawn from Beta(a, b), then ask Tarone's test whether
+ * it can tell.  This is the Harvard-vs-Scandinavia disagreement in
+ * miniature: at rho = 0.002 the answer depends entirely on how many
+ * families you have.
+ */
+static void sibship_demo(ps_rng *rng, const char *label, size_t families,
+                         long size, double p, double rho,
+                         long *ks, long *ns)
+{
+    double a = 0.0, b = 0.0;
+    const bool mixed = ps_beta_binomial_ab(p, rho, &a, &b);
+    for (size_t i = 0; i < families; i++) {
+        ns[i] = size;
+        ks[i] = mixed ? ps_beta_binomial(rng, size, a, b)
+                      : ps_binomial(rng, size, p);
+    }
+    ps_overdispersion od = ps_tarone_z(ks, ns, families);
+    if (!od.ok) {
+        printf("  %-38s (test undefined)\n", label);
+        return;
+    }
+    printf("  %-38s rho_hat = %+8.5f   Z = %6.2f   p = %8.4g  %s\n",
+           label, od.rho, od.z, od.p,
+           od.p < 0.05 ? "<- detected" : "");
 }
 
 static void print_t_test(const char *title, ps_t_test t)
@@ -150,6 +187,32 @@ int main(int argc, char **argv)
     print_t_test("Welch t-test: N(10, 2) vs N(11.5, 3), H0: equal means "
                  "(H0 false)",
                  ps_t_test_welch(buf, m, buf2, m));
+
+    /* ---- one coin or one coin per family?  (paper §3.6, §5.4) ---- */
+    printf("Tarone's test on simulated sibships of 4, p = 0.5122\n");
+    printf("-----------------------------------------------------\n");
+    printf("  H0: every child is a flip of the SAME coin (binomial).\n"
+           "  H1: each family gets its own coin (beta-binomial).\n\n");
+    {
+        const size_t big = 1000000, small = 5000;
+        long *ks = malloc(big * sizeof *ks);
+        long *ns = malloc(big * sizeof *ns);
+        if (ks != NULL && ns != NULL) {
+            sibship_demo(&rng, "one coin, 1000000 families",
+                         big, 4, 0.5122, 0.0, ks, ns);
+            sibship_demo(&rng, "rho = 0.002, 5000 families",
+                         small, 4, 0.5122, 0.002, ks, ns);
+            sibship_demo(&rng, "rho = 0.002, 1000000 families",
+                         big, 4, 0.5122, 0.002, ks, ns);
+            sibship_demo(&rng, "rho = 0.05 (strong), 5000 families",
+                         small, 4, 0.5122, 0.05, ks, ns);
+            printf("\n  A correlation of 0.002 is real but nearly invisible:"
+                   " Z grows as\n  sqrt(pairs), so it takes registry-scale"
+                   " data to see it at all.\n");
+        }
+        free(ks);
+        free(ns);
+    }
 
     free(buf);
     free(buf2);

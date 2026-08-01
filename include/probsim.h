@@ -72,6 +72,21 @@ long   ps_negative_binomial(ps_rng *rng, long r, double p);
 double ps_negative_binomial_pmf(long k, long r, double p);
 double ps_negative_binomial_cdf(long k, long r, double p);
 
+/* Beta-binomial(n, a, b): FIRST draw a coin p ~ Beta(a, b), THEN flip
+ * that one coin n times.  The binomial is the a, b -> infinity limit
+ * (every unit shares one p); here p varies between units, so the
+ * variance is inflated by the factor 1 + (n-1)rho with
+ * rho = 1/(a+b+1) — the intraclass correlation.        (paper §3.6) */
+long   ps_beta_binomial(ps_rng *rng, long n, double a, double b);
+double ps_beta_binomial_pmf(long k, long n, double a, double b);
+double ps_beta_binomial_cdf(long k, long n, double a, double b);
+
+/* Applied work reports the mixture as (p, rho) — a mean proportion and
+ * an intraclass correlation — rather than (a, b).  Converts one to the
+ * other; false (leaving *a, *b untouched) if p or rho is out of range.
+ * rho -> 0 is the binomial limit and has no finite (a, b).  (paper §3.6) */
+bool   ps_beta_binomial_ab(double p, double rho, double *a, double *b);
+
 /* ------------------------------------------------------------------ *
  *  Continuous distributions — samplers, pdf, cdf  (paper §4, src/dist.c)
  *  Samplers/pdf/cdf return NaN on invalid parameters.
@@ -158,6 +173,21 @@ typedef struct {
     double estimate;  /* mean (one-sample) or mean difference (Welch) */
     double se;        /* standard error of the estimate               */
 } ps_t_test;
+
+typedef struct {
+    bool   ok;    /* false if the clusters cannot support the test       */
+    double z;     /* Tarone's Z: >0 means overdispersion                 */
+    double p;     /* one-sided p-value, Pr[Z' >= z] under the binomial   */
+    double phat;  /* pooled proportion, sum(k) / sum(n)                  */
+    double rho;   /* moment estimate of the intraclass correlation       */
+} ps_overdispersion;
+
+/* Tarone's (1979) C(alpha) test of H0: the m clusters (k[i] successes in
+ * n[i] trials) are binomial with a common p, against the beta-binomial
+ * alternative in which p varies between clusters.  Needs at least one
+ * cluster with n[i] >= 2 and a pooled proportion strictly inside (0,1);
+ * otherwise ok is false.                                      (paper §5.4) */
+ps_overdispersion ps_tarone_z(const long *k, const long *n, size_t m);
 
 /* One-sample t-test of H0: E[X] = mu0.                        (paper §5.2) */
 ps_t_test ps_t_test_one_sample(const double *x, size_t n, double mu0);

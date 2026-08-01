@@ -1,5 +1,5 @@
 /*
- * dist.c — samplers, pmfs/pdfs and CDFs for the twelve classical
+ * dist.c — samplers, pmfs/pdfs and CDFs for the thirteen classical
  * distributions.
  *
  * Explained distribution-by-distribution in the companion paper,
@@ -151,6 +151,81 @@ double ps_negative_binomial_cdf(long k, long r, double p)
     if (r < 1 || !(p > 0.0 && p <= 1.0)) return NAN;
     if (k < 0) return 0.0;
     return ps_incbeta(p, (double)r, (double)k + 1.0);
+}
+
+/*
+ * Beta-binomial(n, a, b) — paper §3.6.
+ *
+ * The sampler IS the interpretation: draw one coin p ~ Beta(a, b), then
+ * flip that coin n times.  Contrast ps_binomial(), where every unit is
+ * flipped with the same p.  Mixing over p leaves the mean at n*p̄ but
+ * inflates the variance to n p̄(1-p̄)[1 + (n-1)rho], rho = 1/(a+b+1).
+ *
+ * Note the order of the draws: the beta is drawn ONCE per call, outside
+ * the loop hidden in ps_binomial().  Drawing a fresh p per flip would
+ * give back the plain Binomial(n, p̄) — the difference between the two
+ * is the whole subject of §3.6.
+ */
+long ps_beta_binomial(ps_rng *rng, long n, double a, double b)
+{
+    if (n < 0 || !(a > 0.0) || !(b > 0.0)) return -1;
+    double p = ps_beta(rng, a, b);
+    if (!(p >= 0.0 && p <= 1.0)) return -1;   /* underflow guard */
+    return ps_binomial(rng, n, p);
+}
+
+/*
+ * pmf = C(n,k) B(k+a, n-k+b) / B(a,b), every factor through lgamma so
+ * that large n and small a, b stay in range.
+ */
+double ps_beta_binomial_pmf(long k, long n, double a, double b)
+{
+    if (n < 0 || !(a > 0.0) || !(b > 0.0)) return NAN;
+    if (k < 0 || k > n) return 0.0;
+    double lchoose = lgamma((double)n + 1.0) - lgamma((double)k + 1.0)
+                   - lgamma((double)(n - k) + 1.0);
+    double lnum = lgamma((double)k + a) + lgamma((double)(n - k) + b)
+                - lgamma((double)n + a + b);
+    double lden = lgamma(a) + lgamma(b) - lgamma(a + b);
+    return exp(lchoose + lnum - lden);
+}
+
+/*
+ * No closed form (the tail is a 3F2), so the CDF is the honest sum —
+ * O(k) pmf evaluations, summing from whichever end is shorter to keep
+ * the rounding error away from the tail being reported.
+ */
+double ps_beta_binomial_cdf(long k, long n, double a, double b)
+{
+    if (n < 0 || !(a > 0.0) || !(b > 0.0)) return NAN;
+    if (k < 0) return 0.0;
+    if (k >= n) return 1.0;
+    double s = 0.0;
+    if (k <= n - k - 1) {
+        for (long i = 0; i <= k; i++)
+            s += ps_beta_binomial_pmf(i, n, a, b);
+    } else {
+        for (long i = n; i > k; i--)
+            s += ps_beta_binomial_pmf(i, n, a, b);
+        s = 1.0 - s;
+    }
+    return s < 0.0 ? 0.0 : (s > 1.0 ? 1.0 : s);
+}
+
+/*
+ * (p, rho) -> (a, b).  With s = a + b, the mixture has mean p = a/s and
+ * intraclass correlation rho = 1/(s+1); inverting, s = 1/rho - 1 and
+ * (a, b) = (p*s, (1-p)*s).  rho -> 0 sends s -> infinity: the binomial
+ * limit, which is why it has no finite (a, b) and is excluded here.
+ */
+bool ps_beta_binomial_ab(double p, double rho, double *a, double *b)
+{
+    if (a == NULL || b == NULL) return false;
+    if (!(p > 0.0 && p < 1.0) || !(rho > 0.0 && rho < 1.0)) return false;
+    double s = 1.0 / rho - 1.0;
+    *a = p * s;
+    *b = (1.0 - p) * s;
+    return true;
 }
 
 /* =========================== Continuous =========================== */

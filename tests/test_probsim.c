@@ -78,6 +78,23 @@ static void test_pmf_pdf_fixtures(void)
     /* negative binomial with r = 1 must equal the geometric */
     CHECK_CLOSE(ps_negative_binomial_pmf(4, 1, 0.2),
                 ps_geometric_pmf(4, 0.2), 1e-15);
+    /* scipy.stats.betabinom.pmf(5, 20, 2, 5) */
+    CHECK_CLOSE(ps_beta_binomial_pmf(5, 20, 2.0, 5.0),
+                0.101012031446814, 1e-12);
+    /* scipy.stats.betabinom.pmf(0, 20, 2, 5) — 3/65, the "no successes"
+     * corner the mixture makes far heavier than the binomial does */
+    CHECK_CLOSE(ps_beta_binomial_pmf(0, 20, 2.0, 5.0),
+                0.046153846153846, 1e-12);
+    CHECK(ps_beta_binomial_pmf(0, 20, 2.0, 5.0)
+          > 10.0 * ps_binomial_pmf(0, 20, 2.0 / 7.0));
+    /* Beta(1,1) is the uniform prior, and the mixture is then uniform on
+     * {0,...,n}: pmf = 1/(n+1) for every k. */
+    for (long k = 0; k <= 4; k++)
+        CHECK_CLOSE(ps_beta_binomial_pmf(k, 4, 1.0, 1.0), 0.2, 1e-12);
+    /* As a+b -> infinity with a/(a+b) = p the mixture collapses to the
+     * binomial: every couple gets the same coin after all (paper §3.6). */
+    CHECK_CLOSE(ps_beta_binomial_pmf(5, 20, 2000.0, 6000.0),
+                ps_binomial_pmf(5, 20, 0.25), 5e-4);
     /* scipy.stats.rayleigh.pdf(1.5, scale=2) */
     CHECK_CLOSE(ps_rayleigh_pdf(1.5, 2.0), 0.283064850745878, 1e-12);
     /* scipy.stats.gumbel_r.pdf(1.0, loc=0.5, scale=2) */
@@ -118,6 +135,15 @@ static void test_cdf_fixtures(void)
     CHECK_CLOSE(ps_exponential_cdf(1.2, 0.5), 0.451188363905974, 1e-12);
     /* scipy.stats.nbinom.cdf(5, 3, 0.4) — via I_p(r, k+1) */
     CHECK_CLOSE(ps_negative_binomial_cdf(5, 3, 0.4), 0.684605440000000, 1e-12);
+    /* scipy.stats.betabinom.cdf(5, 20, 2, 5) — summed from the left */
+    CHECK_CLOSE(ps_beta_binomial_cdf(5, 20, 2.0, 5.0),
+                0.528610519914868, 1e-12);
+    /* scipy.stats.betabinom.cdf(14, 20, 2, 5) — summed from the right */
+    CHECK_CLOSE(ps_beta_binomial_cdf(14, 20, 2.0, 5.0),
+                0.981574946792339, 1e-12);
+    CHECK(ps_beta_binomial_cdf(-1, 20, 2.0, 5.0) == 0.0);
+    CHECK(ps_beta_binomial_cdf(20, 20, 2.0, 5.0) == 1.0);
+    CHECK(isnan(ps_beta_binomial_pmf(3, 20, -1.0, 5.0)));
     /* scipy.stats.rayleigh.cdf(1.5, scale=2) */
     CHECK_CLOSE(ps_rayleigh_cdf(1.5, 2.0), 0.245160398010993, 1e-12);
     /* scipy.stats.gumbel_r.cdf(1.0, loc=0.5, scale=2) */
@@ -188,6 +214,84 @@ static void test_t_tests(void)
     CHECK(!ps_t_test_welch(x, nx, flat, 1).ok);
 }
 
+/* ---- 5b. Tarone's overdispersion test (paper §5.4) ---- */
+static void test_overdispersion(void)
+{
+    /* The two extremes are hand-checkable.  Four families of four in
+     * which every family is all-boys or all-girls: phat = 1/2, so
+     * S = 16*4/(1/4) = 64, N = 16, T = 4*4*3 = 48, giving the maximal
+     * rho = (64-16)/48 = 1 and Z = 48/sqrt(96).  This is the "one coin
+     * per family, and it is two-headed" limit of paper §3.6. */
+    const long k_split[] = { 4, 4, 0, 0 };
+    const long n_four[]  = { 4, 4, 4, 4 };
+    ps_overdispersion od = ps_tarone_z(k_split, n_four, 4);
+    CHECK(od.ok);
+    CHECK_CLOSE(od.phat, 0.5, 1e-15);
+    CHECK_CLOSE(od.rho, 1.0, 1e-12);
+    CHECK_CLOSE(od.z, 4.898979485566357, 1e-12);
+    CHECK_CLOSE(od.p, 4.81678504321545e-07, 1e-15);
+
+    /* The mirror image: every family exactly balanced is UNDERdispersed
+     * (S = 0, so rho = -N/T = -1/3) and the one-sided p-value is large. */
+    const long k_even[] = { 2, 2, 2, 2 };
+    od = ps_tarone_z(k_even, n_four, 4);
+    CHECK(od.ok);
+    CHECK_CLOSE(od.rho, -1.0 / 3.0, 1e-12);
+    CHECK_CLOSE(od.z, -1.632993161855452, 1e-12);
+    CHECK(od.p > 0.9);
+
+    /* Binomial data must NOT look overdispersed: 4000 sibships of five
+     * from one common coin.  |Z| ~ N(0,1), so 4 is a safe bound. */
+    ps_rng rng;
+    ps_rng_seed(&rng, 987654321);
+    enum { M = 4000 };
+    static long ks[M], ns[M];
+    for (size_t i = 0; i < M; i++) {
+        ns[i] = 5;
+        ks[i] = ps_binomial(&rng, 5, 0.512);
+    }
+    od = ps_tarone_z(ks, ns, M);
+    CHECK(od.ok);
+    CHECK(fabs(od.z) < 4.0);
+    CHECK(fabs(od.rho) < 0.05);
+
+    /* Beta-binomial data with rho = 0.15 must be caught easily, and the
+     * moment estimate must recover the rho that generated it. */
+    double a, b;
+    CHECK(ps_beta_binomial_ab(0.512, 0.15, &a, &b));
+    for (size_t i = 0; i < M; i++) {
+        ns[i] = 5;
+        ks[i] = ps_beta_binomial(&rng, 5, a, b);
+    }
+    od = ps_tarone_z(ks, ns, M);
+    CHECK(od.ok);
+    CHECK(od.z > 10.0);
+    CHECK(od.p < 1e-6);
+    CHECK_CLOSE(od.rho, 0.15, 0.03);
+
+    /* (p, rho) <-> (a, b) round trip, at the human sex-ratio values of
+     * paper §3.6. */
+    CHECK(ps_beta_binomial_ab(0.5122, 0.002, &a, &b));
+    CHECK_CLOSE(a, 255.5878, 1e-9);
+    CHECK_CLOSE(b, 243.4122, 1e-9);
+    CHECK_CLOSE(a / (a + b), 0.5122, 1e-12);
+    CHECK_CLOSE(1.0 / (a + b + 1.0), 0.002, 1e-12);
+    CHECK(!ps_beta_binomial_ab(0.5, 0.0, &a, &b));   /* binomial limit */
+    CHECK(!ps_beta_binomial_ab(1.0, 0.1, &a, &b));
+
+    /* Degenerate clusters are flagged, not crashed on: singletons carry
+     * no within-family pairs, and an all-success table has no dispersion
+     * to speak of. */
+    const long k_one[] = { 1, 0, 1 };
+    const long n_one[] = { 1, 1, 1 };
+    CHECK(!ps_tarone_z(k_one, n_one, 3).ok);
+    const long k_all[] = { 4, 4, 4 };
+    const long n_all[] = { 4, 4, 4 };
+    CHECK(!ps_tarone_z(k_all, n_all, 3).ok);
+    CHECK(!ps_tarone_z(NULL, n_all, 3).ok);
+    CHECK(!ps_tarone_z(k_all, n_all, 0).ok);
+}
+
 /* ---- 6. Sample moments within 5 standard errors of theory (paper §6.3) --- */
 
 /* Draw n samples with `draw`, then require the sample mean to be within
@@ -234,6 +338,7 @@ static double m_chi_squared(ps_rng *r){ return ps_chi_squared(r, 6.0); }
 static double m_student_t(ps_rng *r)  { return ps_student_t(r, 8.0); }
 static double m_f(ps_rng *r)          { return ps_f(r, 5.0, 12.0); }
 static double m_negbin(ps_rng *r)     { return (double)ps_negative_binomial(r, 3, 0.4); }
+static double m_betabin(ps_rng *r)    { return (double)ps_beta_binomial(r, 20, 2.0, 5.0); }
 static double m_rayleigh(ps_rng *r)   { return ps_rayleigh(r, 2.0); }
 static double m_gumbel(ps_rng *r)     { return ps_gumbel(r, 0.5, 2.0); }
 
@@ -257,6 +362,9 @@ static void test_sampler_moments(void)
     check_moments("StudentT(8)",        m_student_t,   0.0,     8.0/6.0, &rng);
     /* Var[F(d1,d2)] = 2 d2^2 (d1+d2-2) / (d1 (d2-2)^2 (d2-4)) = 1.08 here. */
     check_moments("F(5,12)",            m_f,           1.2,     1.08,    &rng);
+    /* Same mean as Binomial(20, 2/7) = 5.714 but 3.4x the variance —
+     * the overdispersion of paper §3.6, in one line. */
+    check_moments("BetaBinom(20,2,5)",  m_betabin,     40.0/7.0, 5400.0/392.0, &rng);
     /* The hash modeler's annex (paper §3.5, §4.9–§4.10). */
     check_moments("NegBin(3,0.4)",      m_negbin,      4.5,     11.25,   &rng);
     check_moments("Rayleigh(2)",        m_rayleigh,    2.506628, 1.716815, &rng);
@@ -291,6 +399,7 @@ int main(void)
     test_cdf_fixtures();
     test_special_identities();
     test_t_tests();
+    test_overdispersion();
     test_sampler_moments();
     test_type_one_error_rate();
 
