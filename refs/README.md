@@ -1,7 +1,9 @@
 # refs/ — local copies of the bibliography
 
+*Last updated 2026-08-02.*
+
 This directory holds local PDF copies of the open-access references cited in
-`docs/references.bib`.  Populate it with:
+`paper/references.bib`.  Populate it with:
 
 ```sh
 sh scripts/fetch_refs.sh     # or: make fetch-refs
@@ -31,3 +33,8 @@ canonical sources keeps the repo small and the provenance clean.)
 | —                                  | Marsaglia & Tsang 2000 gamma (`marsaglia2000gamma`) | paywalled (ACM TOMS); cited by DOI |
 | —                                  | Welford 1962 (`welford1962`)   | paywalled (Technometrics); cited by DOI |
 | —                                  | Devroye 1986 (`devroye1986`)   | whole book free chapter-by-chapter at <http://luc.devroye.org/rnbookindex.html> |
+| —                                  | Skellam 1948 (`skellam1948`)   | paywalled (JRSS-B); cited by DOI |
+| —                                  | Tarone 1979 (`tarone1979`)     | paywalled (Biometrika); cited by DOI |
+| —                                  | Edwards 1958 (`edwards1958`)   | paywalled (Annals of Human Genetics); cited by DOI |
+| —                                  | Lindsey & Altham 1998 (`lindsey1998`) | paywalled (JRSS-C); cited by DOI |
+| —                                  | Jacobsen et al. 1999 (`jacobsen1999`) | Human Reproduction; cited by DOI |

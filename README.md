@@ -1,5 +1,7 @@
 # probsim — classical probability distributions in C99
 
+*Last updated 2026-08-02.*
+
 A small, portable C99 library and driver application that simulates the major
 classical probability distributions, together with a typeset companion paper
 (`paper/probsim.tex` → `paper/probsim.pdf`) explaining what each distribution is
@@ -13,8 +15,8 @@ into the *t*-test.
 | `include/probsim.h`     | Public API: RNG, samplers, densities/CDFs, stats, *t*-tests     | paper §2–§5   |
 | `src/rng.c`             | xoshiro256++ generator + splitmix64 seeding                     | paper §2      |
 | `src/special.c`         | Regularized incomplete beta/gamma functions                     | paper §5.1    |
-| `src/dist.c`            | Samplers, PDFs/PMFs and CDFs for the 12 distributions           | paper §3–§4   |
-| `src/stats.c`           | Descriptive statistics (Welford), one-sample & Welch *t*-tests  | paper §5      |
+| `src/dist.c`            | Samplers, PDFs/PMFs and CDFs for the 13 distributions           | paper §3–§4   |
+| `src/stats.c`           | Descriptive statistics (Welford), *t*-tests, Tarone's test      | paper §5      |
 | `app/simulate.c`        | Driver: theoretical vs. empirical moments, *t*-test demos       | paper §6      |
 | `tests/test_probsim.c`  | Unit tests: CDF spot values, moment checks, *t*-test fixtures   | paper §6      |
 | `paper/probsim.tex`     | Companion paper (LaTeX)                                         | —             |
@@ -74,12 +76,18 @@ links back to the site from each figure it animates.
 
 ## Distributions covered
 
-Discrete: Bernoulli, binomial, geometric, Poisson, negative binomial.
-Continuous: uniform, exponential, normal, gamma, beta, chi-squared,
-Student's *t*, Fisher's *F*, Rayleigh, Gumbel.
+Discrete: Bernoulli, binomial, geometric, Poisson, beta-binomial,
+negative binomial.  Continuous: uniform, exponential, normal, gamma,
+beta, chi-squared, Student's *t*, Fisher's *F*, Rayleigh, Gumbel.
 
-The last three are the "hash modeler's annex" (paper §3.5, §4.9–§4.10):
-less common in introductory courses, but exactly the laws that govern an
-ideal cryptographic hash — multi-collision search cost (negative
-binomial), the birthday bound (Rayleigh), and worst-case bucket loads and
-longest runs (Gumbel).
+The beta-binomial (paper §3.6) is the binomial with its *p* drawn afresh
+from a beta for each unit rather than fixed once for all — the standard
+model for counts that cluster.  It comes with Tarone's C(α) test for
+binomial overdispersion (`ps_tarone_z()`, paper §5.4), which asks of real
+data whether one coin or many were at work.
+
+The negative binomial, Rayleigh and Gumbel form the "hash modeler's
+annex" (paper §3.5, §4.9–§4.10): less common in introductory courses, but
+exactly the laws that govern an ideal cryptographic hash — multi-collision
+search cost (negative binomial), the birthday bound (Rayleigh), and
+worst-case bucket loads and longest runs (Gumbel).

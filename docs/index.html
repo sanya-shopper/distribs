@@ -55,6 +55,7 @@
   --red:       #d03b3b;
   --blue-soft: rgba(42,120,214,0.12);
   --red-soft:  rgba(208,59,59,0.18);
+  --mag-soft:  rgba(232,123,164,0.20);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -74,6 +75,7 @@
     --red:       #e66767;
     --blue-soft: rgba(57,135,229,0.18);
     --red-soft:  rgba(230,103,103,0.22);
+    --mag-soft:  rgba(213,81,129,0.26);
   }
 }
 * { box-sizing: border-box; }
@@ -162,6 +164,16 @@ p.xref b { color: var(--ink2); font-weight: 600; }
            font-variant-numeric: tabular-nums; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+/* The two ways to run the same experiment (beta-binomial panel). */
+.twoup { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0; }
+@media (max-width: 760px) { .twoup { grid-template-columns: 1fr; } }
+.twoup > div {
+  font-size: 13.5px; color: var(--ink2); border-radius: 8px;
+  padding: 10px 14px; border-left: 3px solid transparent;
+}
+.twoup .wayA { background: var(--blue-soft); border-left-color: var(--blue); }
+.twoup .wayB { background: var(--mag-soft); border-left-color: var(--magenta); }
+.twoup b { color: var(--ink); }
 table.cheat {
   border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 12px 0;
 }
@@ -218,7 +230,7 @@ p.hist b { color: var(--ink); }
   <h1>The classical distributions,<br>from uniform bits to the <em>t</em>-test</h1>
   <p class="sub">
     Interactive companion to the <strong>probsim</strong> C99 library and its
-    typeset paper.  Twelve classical probability distributions — plus a
+    typeset paper.  Thirteen classical probability distributions — plus a
     three-member annex for modeling cryptographic hashes — each one built
     from the ones before it, each one animated below, and all of them
     funneling into a working <em>t</em>-test.  Browse casually here; when you want the
@@ -451,9 +463,79 @@ p.hist b { color: var(--ink); }
       <p class="readout" id="nb-read"></p>
     </div>
   </div>
-  <p class="xref"><b>Paper:</b> §3 &amp; Figure 4 — <a href="probsim.pdf">PDF</a>
+
+  <h3 id="betabinomial">Beta-binomial(n, a, b) — first pick a coin, then flip it</h3>
+  <p>
+    Every distribution above flips <em>one</em> coin.  The beta-binomial asks
+    what happens when the coin itself is drawn at random — a proportion
+    <em>p</em> from a <a href="#beta">Beta(a, b)</a>, once per unit — and only
+    then flipped <em>n</em> times.  Two experiments, easy to confuse:
+  </p>
+  <div class="twoup">
+    <div class="wayA">
+      <b>One coin, many flips.</b>  Draw <em>p</em> once for the whole world,
+      then flip it for every trial in every family.  This is the
+      <a href="#binomial">binomial</a>: families differ only by luck.
+    </div>
+    <div class="wayB">
+      <b>One coin per family.</b>  Each family draws its own <em>p</em>, then
+      flips <em>that</em> coin <em>n</em> times.  Luck still operates, but now
+      families also differ in their <em>propensity</em> — and the counts spread
+      out.
+    </div>
+  </div>
+  <p>
+    The means are identical.  The variance is not: mixing multiplies it by
+    <b>1 + (n−1)ρ</b>, where <b>ρ = 1/(a+b+1)</b> is the
+    <em>intraclass correlation</em> — the chance that two children of the same
+    family share an outcome beyond what the common rate explains.  ρ = 0 is
+    the binomial; ρ = 1 is a coin that comes up all-heads or all-tails per
+    family.  Drag ρ and watch the blue stems (binomial) and magenta stems
+    (beta-binomial) separate.
+  </p>
+  <div class="viz"><canvas id="cv-bbin-coin" height="128"></canvas></div>
+  <div class="viz"><canvas id="cv-bbin" height="252"></canvas></div>
+  <div class="controls">
+    <label>n <input type="range" id="bb-n" min="2" max="20" step="1" value="8">
+      <span class="val" id="bb-n-v">8</span></label>
+    <label>mean p̄ <input type="range" id="bb-p" min="0.05" max="0.95" step="0.01"
+      value="0.5"> <span class="val" id="bb-p-v">0.50</span></label>
+    <label>ρ <input type="range" id="bb-rho" min="0.001" max="0.6" step="0.001"
+      value="0.15"> <span class="val" id="bb-rho-v">0.150</span></label>
+    <button id="bb-draw">draw one family (slowly)</button>
+    <button id="bb-burst">+2000 families</button>
+    <button id="bb-reset">reset</button>
+  </div>
+  <p class="readout" id="bb-read"></p>
+
+  <div class="grid2">
+    <div class="note">
+      <b>Four sons — is the next one more likely to be a son?</b>
+      <span id="bb-sons"></span>
+    </div>
+    <div class="note">
+      <b>Could you even tell?</b>  Tarone's test on simulated sibships of
+      four, drawn with the ρ set above.
+      <span id="bb-tarone">Press a button.</span>
+      <div class="controls" style="margin-top:8px">
+        <button id="bb-tar-small">test 5,000 families</button>
+        <button id="bb-tar-big">test 1,000,000 families</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="hist"><b>History:</b> the mixture is as old as Bayes'
+    1763 essay — his billiard ball fixes an unknown <em>p</em> before any
+    ball is thrown — and became a working tool with Skellam (1948), who
+    named and fitted it.  Its two natural homes are biology, where each
+    litter, couple or plot has its own propensity, and manufacturing,
+    where each production lot has its own defect rate.</p>
+
+  <p class="xref"><b>Paper:</b> §3 &amp; Figure 4, §3.6, §5.4 —
+    <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
-    ps_bernoulli() … ps_poisson()</code></a></p>
+    ps_bernoulli() … ps_beta_binomial()</code></a>
+    · <a data-code="src/stats.c"><code>src/stats.c: ps_tarone_z()</code></a></p>
 </section>
 
 <section class="panel" id="continuous">
@@ -765,6 +847,7 @@ p.hist b { color: var(--ink); }
       <tr><td><a href="#binomial">Binomial</a></td><td>successes in <em>n</em> trials</td><td>exact tests of proportions</td></tr>
       <tr><td><a href="#geometric">Geometric</a></td><td>failures until success</td><td>retry / attrition modeling</td></tr>
       <tr><td><a href="#poisson">Poisson</a></td><td>rare-event counts</td><td>count regression, goodness of fit</td></tr>
+      <tr><td><a href="#betabinomial">Beta-binomial</a></td><td>counts when <em>p</em> varies between units</td><td>overdispersion tests; lot sampling</td></tr>
       <tr><td><a href="#uniform-bits">Uniform</a></td><td>total ignorance on a range</td><td><em>p</em>-values under H₀; simulation</td></tr>
       <tr><td><a href="#uniform-bits">Exponential</a></td><td>memoryless waiting time</td><td>survival &amp; reliability baselines</td></tr>
       <tr><td><a href="#normal">Normal</a></td><td>sums of small effects</td><td>CLT; regression noise</td></tr>
@@ -878,7 +961,7 @@ p.hist b { color: var(--ink); }
     probsim — a C99 library, a typeset paper, and this site, kept in sync:
     the code cites paper sections, the paper cites functions, and both link
     here.  <a href="probsim.pdf">Full paper (PDF)</a> ·
-    <a data-repo href="#">source repository</a>. Last updated 2026-08-01.
+    <a data-repo href="#">source repository</a>. Last updated 2026-08-02.
   </div>
 </footer>
 
@@ -1000,6 +1083,17 @@ const binomPmf = (k, n, p) =>
 const poisPmf = (k, lam) =>
   Math.exp(k * Math.log(lam) - lam - lgamma(k + 1));
 const geomPmf = (k, p) => p * Math.exp(k * Math.log1p(-p));
+/* Beta-binomial pmf — port of src/dist.c: ps_beta_binomial_pmf().
+ * C(n,k) B(k+a, n-k+b) / B(a,b), all through lgamma. */
+const betaBinomPmf = (k, n, a, b) => (k < 0 || k > n) ? 0 : Math.exp(
+  lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1)
+  + lgamma(k + a) + lgamma(n - k + b) - lgamma(n + a + b)
+  - (lgamma(a) + lgamma(b) - lgamma(a + b)));
+/* (p, rho) -> (a, b) — port of src/dist.c: ps_beta_binomial_ab(). */
+const betaBinomAb = (p, rho) => {
+  const s = 1 / rho - 1;
+  return [p * s, (1 - p) * s];
+};
 const negbinPmf = (k, r, p) =>
   Math.exp(lgamma(k + r) - lgamma(k + 1) - lgamma(r)
            + r * Math.log(p) + k * Math.log1p(-p));
@@ -1034,6 +1128,13 @@ function incgammaP(a, x) {
     if (Math.abs(del - 1) < 1e-15) break;
   }
   return 1 - hh * Math.exp(-x + a * Math.log(x) - lgamma(a));
+}
+
+/* Standard normal CDF, built from the incomplete gamma above via
+ * P(1/2, x) = erf(sqrt(x)) — the identity the C test suite checks. */
+function normCdf(z) {
+  const e = incgammaP(0.5, z * z / 2);
+  return z >= 0 ? 0.5 * (1 + e) : 0.5 * (1 - e);
 }
 
 /* Polar Box–Muller — port of src/dist.c: ps_normal() (Math.random is the
@@ -1253,6 +1354,8 @@ function slider(id, digits, fn) {
              href: '#chisq' },
     pois:  { x: 75,  y: 325, label: 'Poisson(λ)',      type: 'disc',
              href: '#poisson' },
+    bbin:  { x: 225, y: 425, label: 'Beta-binomial(n, a, b)', type: 'disc',
+             href: '#betabinomial' },
     beta:  { x: 400, y: 325, label: 'Beta(a, b)',      type: 'cont',
              href: '#beta' },
     stut:  { x: 680, y: 325, label: "Student's t(ν)",  type: 'cont',
@@ -1277,6 +1380,8 @@ function slider(id, digits, fn) {
     ['norm', 'stut',  '', 'bezier'],
     ['chi',  'f',     '(U/d₁)/(V/d₂)'],
     ['stut', 'ttest', 'tail areas ⇒ p-values'],
+    ['beta', 'bbin',  'draw p once, then n flips'],
+    ['binom','bbin',  'p varies between units', 'dashed'],
   ];
   const el = (tag, attrs) => {
     const e = document.createElementNS(NS, tag);
@@ -1711,6 +1816,240 @@ pmfPanel('cv-negbin', 'nb-read', {
   });
   $('bern-reset').addEventListener('click', () => { succ = 0; n = 0; show(); });
   show();
+})();
+
+/* ================================================================== *
+ *  Panel: beta-binomial (paper §3.6, Figure 5) and Tarone's test
+ *  (paper §5.4).  Two canvases: the coin being drawn from its Beta,
+ *  and the two pmfs it produces.  Everything mirrors src/dist.c:
+ *  ps_beta_binomial() and src/stats.c: ps_tarone_z().
+ * ================================================================== */
+(function betaBinomialPanel() {
+  const cvCoin = $('cv-bbin-coin'), cvPmf = $('cv-bbin');
+  let n = 8, pbar = 0.5, rho = 0.15;
+  let hist = [], total = 0;          /* hist[k] = families with k successes */
+  let shown = null;                  /* the family being revealed, if any */
+  let anim = null;
+
+  const ab = () => betaBinomAb(pbar, rho);
+  const resetHist = () => { hist = new Array(n + 1).fill(0); total = 0; };
+  resetHist();
+
+  /* One family: draw the coin once, then flip it n times — the order is
+   * the whole point (src/dist.c: ps_beta_binomial). */
+  function drawFamily() {
+    const [a, b] = ab();
+    const p = betaSample(a, b);
+    const flips = Array.from({ length: n }, () => Math.random() < p);
+    return { p, flips, k: flips.filter(Boolean).length };
+  }
+  function record(k) { hist[k]++; total++; }
+
+  /* ---- canvas 1: the Beta the coin comes from ---------------------- */
+  function drawCoin() {
+    const [a, b] = ab();
+    let ymax = 0;
+    for (let i = 1; i < 200; i++) ymax = Math.max(ymax, betaPdf(i / 200, a, b));
+    ymax = Math.max(ymax * 1.15, 1.2);
+    const ch = chart(cvCoin, 128, { xmin: 0, xmax: 1, ymin: 0, ymax,
+                                    margin: { l: 40, r: 12, t: 14, b: 24 } });
+    ch.clear();
+    ch.axes([0, 0.25, 0.5, 0.75, 1], [], v => String(v));
+    ch.fillUnder(x => betaPdf(x, a, b), 0.001, 0.999, cssv('--mag-soft'));
+    ch.curve(x => betaPdf(x, a, b), cssv('--magenta'), { width: 2 });
+    ch.vline(pbar, cssv('--blue'), { dash: [4, 3] });
+    ch.label('p̄', pbar + 0.012, ymax * 0.86, cssv('--blue'));
+    if (shown) {
+      ch.vline(shown.p, cssv('--ink'), { width: 2 });
+      ch.label(`this family's p = ${fmt(shown.p, 3)}`,
+               Math.min(shown.p + 0.015, 0.62), ymax * 0.55, cssv('--ink'));
+    }
+    ch.label(`Beta(${fmt(a, 2)}, ${fmt(b, 2)}) — the coin the family draws`,
+             0.02, ymax * 1.02, cssv('--ink2'));
+  }
+
+  /* ---- canvas 2: binomial vs beta-binomial, plus the sample -------- */
+  function drawPmf() {
+    const [a, b] = ab();
+    const bin = [], bb = [];
+    for (let k = 0; k <= n; k++) {
+      bin.push([k, binomPmf(k, n, pbar)]);
+      bb.push([k, betaBinomPmf(k, n, a, b)]);
+    }
+    const emp = total ? hist.map(c => c / total) : [];
+    const ymax = Math.max(
+      ...bin.map(d => d[1]), ...bb.map(d => d[1]), ...emp) * 1.18 || 1;
+    const ch = chart(cvPmf, 252, { xmin: -0.8, xmax: n + 0.8, ymin: 0, ymax });
+    ch.clear();
+    ch.axes(niceTicks(0, n, 6), niceTicks(0, ymax, 4));
+
+    /* empirical bars sit behind the two theoretical combs */
+    if (total) {
+      const ctx = ch.ctx;
+      ctx.fillStyle = cssv('--mag-soft');
+      hist.forEach((c, k) => {
+        const y = c / total;
+        const x0 = ch.X(k - 0.42), x1 = ch.X(k + 0.42);
+        ctx.fillRect(x0, ch.Y(y), x1 - x0, ch.Y(0) - ch.Y(y));
+      });
+    }
+    ch.stems(bin.map(([k, p]) => [k - 0.14, p]), cssv('--blue'));
+    ch.stems(bb.map(([k, p]) => [k + 0.14, p]), cssv('--magenta'));
+    ch.label(`binomial (ρ = 0)`, -0.5, ymax * 0.96, cssv('--blue'));
+    ch.label(`beta-binomial (ρ = ${fmt(rho, 3)})`,
+             -0.5, ymax * 0.885, cssv('--magenta'));
+
+    const inflate = 1 + (n - 1) * rho;
+    const vBin = n * pbar * (1 - pbar);
+    let extra = '';
+    if (total) {
+      let m = 0, m2 = 0;
+      hist.forEach((c, k) => { m += k * c; });
+      m /= total;
+      hist.forEach((c, k) => { m2 += c * (k - m) * (k - m); });
+      const v = total > 1 ? m2 / (total - 1) : NaN;
+      extra = `   ·   ${total.toLocaleString()} simulated families: ` +
+              `mean ${fmt(m, 3)}, variance ${fmt(v, 3)}`;
+    }
+    $('bb-read').textContent =
+      `mean n·p̄ = ${fmt(n * pbar, 2)} for both   ·   ` +
+      `variance ${fmt(vBin, 3)} → ${fmt(vBin * inflate, 3)}, ` +
+      `inflated by 1 + (n−1)ρ = ${fmt(inflate, 2)}×${extra}`;
+  }
+
+  /* ---- the "four sons" question ------------------------------------ */
+  function drawSons() {
+    const [a, b] = ab();
+    const run = Math.min(4, n);
+    /* Beta(a,b) prior + `run` successes -> Beta(a+run, b); the predictive
+     * probability of one more success is the posterior mean. */
+    const post = (a + run) / (a + b + run);
+    const lift = post - pbar;
+    const verdict = lift < 0.005 ? '<b>yes, but far too little to matter</b>'
+                  : lift < 0.05  ? '<b>yes, slightly</b>'
+                                 : '<b>yes, substantially</b>';
+    $('bb-sons').innerHTML =
+      ` Under this mixture the run is evidence about the family's own coin, ` +
+      `so the answer is ${verdict}: the predictive chance rises from ` +
+      `p̄ = ${fmt(pbar, 3)} to <b>${fmt(post, 3)}</b> after ${run} sons ` +
+      `(a lift of ${lift >= 0 ? '+' : ''}${fmt(lift, 4)}). Slide ρ to 0.002, ` +
+      `the scale plausible for real sex ratios, and the lift falls under a ` +
+      `thousandth — which is why the question has stayed open for a century.`;
+  }
+
+  /* ---- Tarone's test on simulated sibships ------------------------- */
+  /* Port of src/stats.c: ps_tarone_z(), specialised to equal cluster
+   * sizes (sibships of 4), which is all this demo simulates. */
+  function taroneZ(ks, size) {
+    const m = ks.length;
+    let sumK = 0;
+    for (let i = 0; i < m; i++) sumK += ks[i];
+    const sumN = m * size, pairs = m * size * (size - 1);
+    if (!(pairs > 0)) return null;
+    const phat = sumK / sumN;
+    if (!(phat > 0 && phat < 1)) return null;
+    let s = 0;
+    for (let i = 0; i < m; i++) {
+      const d = ks[i] - size * phat;
+      s += d * d;
+    }
+    s /= phat * (1 - phat);
+    const z = (s - sumN) / Math.sqrt(2 * pairs);
+    return { phat, rho: (s - sumN) / pairs, z, p: normCdf(-z) };
+  }
+
+  function runTarone(m) {
+    const SIZE = 4;
+    const [a, b] = ab();
+    const ks = new Int32Array(m);
+    for (let i = 0; i < m; i++) {
+      const p = betaSample(a, b);
+      let k = 0;
+      for (let j = 0; j < SIZE; j++) if (Math.random() < p) k++;
+      ks[i] = k;
+    }
+    const r = taroneZ(ks, SIZE);
+    if (!r) { $('bb-tarone').textContent = ' The test is undefined here.'; return; }
+    const detected = r.p < 0.05;
+    $('bb-tarone').innerHTML =
+      ` ${m.toLocaleString()} families of 4, simulated at ρ = ${fmt(rho, 3)}: ` +
+      `ρ̂ = <b>${r.rho >= 0 ? '+' : ''}${fmt(r.rho, 5)}</b>, ` +
+      `Z = <b>${fmt(r.z, 2)}</b>, p = <b>${r.p < 1e-4
+        ? r.p.toExponential(1) : fmt(r.p, 4)}</b> — ` +
+      (detected ? 'overdispersion detected.'
+                : 'not detected at the 5% level.');
+  }
+  function tarone(m) {
+    $('bb-tarone').textContent =
+      ` simulating ${m.toLocaleString()} families…`;
+    /* yield a frame so the "simulating" text paints before we block */
+    setTimeout(() => runTarone(m), 30);
+  }
+
+  /* ---- animation: one family, slowly ------------------------------- */
+  function playOne() {
+    if (anim) cancelAnimationFrame(anim);
+    const fam = drawFamily();
+    shown = { p: fam.p, flips: [], k: 0 };
+    let i = 0, hold = 0;
+    const step = () => {
+      hold++;
+      if (hold % 16 === 0 && i < fam.flips.length) {
+        shown.flips.push(fam.flips[i]);
+        if (fam.flips[i]) shown.k++;
+        i++;
+        redraw();
+      }
+      if (i < fam.flips.length) { anim = requestAnimationFrame(step); return; }
+      anim = null;
+      record(fam.k);
+      redraw();
+    };
+    redraw();
+    anim = requestAnimationFrame(step);
+  }
+
+  /* the revealed flips, drawn as a row of pips under the beta */
+  function drawFlips() {
+    if (!shown || !shown.flips.length) return;
+    const ctx = cvCoin.getContext('2d');
+    const w = cvCoin.clientWidth || 600;
+    const r = 6, gap = 17;
+    const x0 = w - 14 - (shown.flips.length - 1) * gap - r;
+    shown.flips.forEach((ok, i) => {
+      ctx.beginPath();
+      ctx.arc(x0 + i * gap, 20, r, 0, 7);
+      ctx.fillStyle = ok ? cssv('--magenta') : cssv('--surface');
+      ctx.fill();
+      ctx.strokeStyle = cssv('--magenta'); ctx.lineWidth = 1.6;
+      ctx.stroke();
+    });
+  }
+
+  function redraw() { drawCoin(); drawFlips(); drawPmf(); drawSons(); }
+
+  slider('bb-n', 0, v => {
+    if (v !== n) { n = v; resetHist(); shown = null; }
+    redraw();
+  });
+  slider('bb-p', 2, v => { pbar = v; resetHist(); shown = null; redraw(); });
+  slider('bb-rho', 3, v => {
+    rho = v; resetHist(); shown = null;
+    $('bb-tarone').textContent = ' Press a button.';
+    redraw();
+  });
+  $('bb-draw').addEventListener('click', playOne);
+  $('bb-burst').addEventListener('click', () => {
+    for (let i = 0; i < 2000; i++) record(drawFamily().k);
+    shown = null; redraw();
+  });
+  $('bb-reset').addEventListener('click', () => {
+    if (anim) { cancelAnimationFrame(anim); anim = null; }
+    resetHist(); shown = null; redraw();
+  });
+  $('bb-tar-small').addEventListener('click', () => tarone(5000));
+  $('bb-tar-big').addEventListener('click', () => tarone(1000000));
+  onRedraw(redraw);
 })();
 
 /* ================================================================== *

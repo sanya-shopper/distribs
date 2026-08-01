@@ -76,9 +76,11 @@
 }
 
 % Inline pointer from a paper section to the code that implements it.
+% Ragged-right: the argument is a run of unbreakable identifiers, so a
+% justified line cannot always be made to fit.
 \newcommand{\srcref}[1]{%
-  \par\smallskip\noindent{\small\sffamily\color{inkS}%
-  $\hookrightarrow$ implemented in \texttt{#1}}\par\smallskip}
+  \par\smallskip\noindent{\small\sffamily\color{inkS}\raggedright
+  $\hookrightarrow$ implemented in \texttt{#1}\par}\smallskip}
 
 % The interactive web edition (docs/index.html), served via GitHub Pages
 % from the sanya-shopper/distribs repository.
@@ -94,7 +96,10 @@
        \large A working tour from uniform bits to the $t$-test,\\
        with the \texttt{probsim} C99 library}
 \author{The \texttt{probsim} project}
-\date{July 2026}
+% Deliberately a fixed date, not \today: the built PDF is committed and
+% checked for staleness against its sources (see Makefile: check-sync),
+% so a date that changed on every rebuild would report false drift.
+\date{Last updated 2026-08-02}
 
 \begin{document}
 \maketitle
@@ -102,7 +107,7 @@
 \begin{abstract}
 \noindent
 This paper accompanies \texttt{probsim}, a small C99 library that simulates
-the twelve classical probability distributions --- plus a three-member
+the thirteen classical probability distributions --- plus a three-member
 annex for modeling cryptographic hashes --- and carries the results all
 the way to working $t$-tests.  For each distribution we explain what it
 models, where it earns its keep in statistical inference and applied
@@ -131,9 +136,9 @@ Bernoulli \S\ref{sec:bernoulli}      & Uniform \S\ref{sec:uniform}         & the
 Binomial \S\ref{sec:binomial}        & Exponential \S\ref{sec:exponential} & special functions \S\ref{sec:special} \\
 Geometric \S\ref{sec:geometric}      & Normal \S\ref{sec:normal}           & one-sample $t$-test \S\ref{sec:onesample} \\
 Poisson \S\ref{sec:poisson}          & Gamma \S\ref{sec:gamma}             & Welch's $t$-test \S\ref{sec:welch} \\
-Neg.\ binomial \S\ref{sec:negbin}    & Beta \S\ref{sec:beta}               & driver \& tests \S\ref{sec:driver} \\
-                                     & Chi-squared \S\ref{sec:chisq}       & cheat sheet \S\ref{sec:cheatsheet} \\
-                                     & Student's $t$ \S\ref{sec:studentt}  & \\
+Neg.\ binomial \S\ref{sec:negbin}    & Beta \S\ref{sec:beta}               & overdispersion tests \S\ref{sec:tarone} \\
+Beta-binomial \S\ref{sec:betabin}    & Chi-squared \S\ref{sec:chisq}       & driver \& tests \S\ref{sec:driver} \\
+                                     & Student's $t$ \S\ref{sec:studentt}  & cheat sheet \S\ref{sec:cheatsheet} \\
                                      & $F$ \S\ref{sec:f}                   & \\
                                      & Rayleigh \S\ref{sec:rayleigh}       & \\
                                      & Gumbel \S\ref{sec:gumbel}           & \\
@@ -163,6 +168,7 @@ and Figure~\ref{fig:family} is its map.
   \node[discretebox] (binom) at (-6.3,-3.4) {Binomial$(n,p)$};
   \node[discretebox] (geom) at (-2.6,-3.4) {Geometric$(p)$};
   \node[discretebox] (pois) at (-6.3,-5.1) {Poisson$(\lambda)$};
+  \node[discretebox] (bbin) at (-2.6,-6.7) {Beta-binomial$(n,a,b)$};
   % continuous branch (right)
   \node[contbox] (expo) at (0.6,-1.7) {Exponential$(\lambda)$};
   \node[contbox] (norm) at (5.2,-1.7) {Normal$(\mu,\sigma)$};
@@ -194,6 +200,11 @@ and Figure~\ref{fig:family} is its map.
     node[flowlab, pos=0.5] {$\chi^2_k=\mathrm{Gamma}(\tfrac{k}{2},2)$};
   \draw[flow] (gam) -- (beta)
     node[flowlab, pos=0.5] {$G_1/(G_1{+}G_2)$};
+  \draw[flow] (beta.south west) -- (bbin.east)
+    node[flowlab, pos=0.45] {draw $p$ once,\\then $n$ flips};
+  \draw[flow, dashed] (binom.south) .. controls (-6.0,-6.7) ..
+    (bbin.west)
+    node[flowlab, pos=0.72] {$p$ varies\\between units};
   \draw[flow] (norm.south east) .. controls (7.0,-2.6) and (6.3,-3.6) ..
     (stut.north east);
   \draw[flow] (chi) -- (stut)
@@ -209,9 +220,12 @@ distributions grow along the left (\S\ref{sec:discrete}),
 \textcolor{sBlue}{continuous} ones along the right (\S\ref{sec:continuous}),
 and the family funnels into the \textcolor{cRed}{$t$-tests} of
 \S\ref{sec:inference}.  Each arrow is literally a line or two of C in
-\texttt{src/dist.c}.  Three less-common relatives for hash modeling hang
-off this tree: the negative binomial (\S\ref{sec:negbin}) is a sum of
-geometric waits, and the Rayleigh and Gumbel
+\texttt{src/dist.c}.  The beta-binomial (\S\ref{sec:betabin}) is the one
+arrow that runs \emph{back} from the continuous side to the discrete: it
+is the binomial with its $p$ drawn afresh from a beta for each unit
+rather than fixed once for all.  Three further relatives for hash
+modeling hang off the tree: the negative binomial (\S\ref{sec:negbin})
+is a sum of geometric waits, and the Rayleigh and Gumbel
 (\S\ref{sec:rayleigh}--\ref{sec:gumbel}) are one-line transforms of the
 exponential.\ \webfig{family}}
 \label{fig:family}
@@ -654,6 +668,110 @@ standard analysis tools are negative-binomial regressions at scale.
 
 \srcref{src/dist.c: ps\_negative\_binomial(), ps\_negative\_binomial\_pmf(),
         ps\_negative\_binomial\_cdf()}
+
+\subsection{Beta-binomial}\label{sec:betabin}
+
+Every distribution so far flips one coin.  The beta-binomial draws the
+coin itself: a proportion $p\sim\mathrm{Beta}(a,b)$ (\S\ref{sec:beta}),
+once per unit, and only then $n$ flips of \emph{that} coin.  Integrating
+$p$ out leaves
+\[
+\Pr[X=k]=\binom{n}{k}\frac{B(k+a,\;n-k+b)}{B(a,b)},\qquad
+\E X = n\bar p,\quad
+\Var X = n\bar p(1-\bar p)\bigl[1+(n-1)\rho\bigr],
+\]
+with $\bar p = a/(a{+}b)$ and $\rho = 1/(a{+}b{+}1)$.  The mean is the
+binomial's; the variance is the binomial's inflated by
+$1+(n-1)\rho$.  That factor is the whole distribution.  Its $\rho$ is the
+\emph{intraclass correlation} --- the chance that two draws from the same
+unit agree beyond what the common rate explains --- and it interpolates
+between the two experiments people habitually confuse: $\rho\to0$ sends
+$a{+}b\to\infty$, the beta collapses onto $\bar p$, and the
+beta-binomial \emph{is} Binomial$(n,\bar p)$; $\rho\to1$ gives a coin that
+is all heads or all tails per unit.  Note where the mixing happens.
+Drawing a fresh $p$ for every \emph{flip} would give the plain binomial
+straight back; drawing it once per \emph{unit} is what correlates the
+flips within a unit, and the library's sampler is that sentence in two
+lines --- one \texttt{ps\_beta}, then one \texttt{ps\_binomial}.
+
+This is the binomial's overdispersion cure exactly as the negative
+binomial (\S\ref{sec:negbin}) is the Poisson's, and the parameterisation
+worth using in practice is $(\bar p, \rho)$ rather than $(a,b)$:
+\texttt{ps\_beta\_binomial\_ab()} inverts $s = 1/\rho - 1$,
+$(a,b) = (\bar p s, (1{-}\bar p)s)$.  It earns its keep wherever trials
+cluster and the cluster has its own propensity: litters, couples and
+plots in biology, production lots in acceptance sampling, classrooms and
+clinics in hierarchical models, and --- via the empirical-Bayes reading
+of the same two-stage story --- the shrinkage estimators that pull small
+lots' noisy rates toward the population mean.  The CDF has no closed form
+(its tail is a $_3F_2$), so the library sums the pmf from whichever end
+is shorter.
+
+\paragraph{Origins and habitat.}
+The two-stage picture is as old as \citet{bayes1763}: his billiard ball
+fixes an unknown $p$ before any subsequent ball is thrown, which makes
+the resulting predictive law for $k$ successes in $n$ the first
+beta-binomial in print.  It became a working tool with
+\citet{skellam1948}, whose title states the construction outright --- the
+binomial, with the probability of success regarded as variable between
+the sets of trials.  Its most persistent habitat is the question of
+whether boys or girls run in families, and that literature is a lesson in
+what $\rho$ costs to see.  Geissler's 1889 registry of Saxon births,
+about a million families, is the canonical test bed: \citet{edwards1958}
+found the binomial fit genuinely wanting, and \citet{lindsey1998} later
+fitted Skellam's mixture and its rivals to the same table, finding the
+dispersion real but small and entangled with family size --- larger
+families show both a higher $\Pr[\text{boy}]$ and more dispersion, which
+is what a stopping rule (keep trying for a son) would also produce.
+Against that, \citet{jacobsen1999} took $815{,}891$ Danish births and
+found \emph{no} independent effect of the sexes of the preceding
+children.  The disagreement is not a contradiction so much as an
+illustration: the heterogeneity at issue is of order $\rho\sim10^{-3}$,
+which is invisible in any ordinary study, detectable only at registry
+scale, and confounded there by exactly the family-level behaviour it
+resembles.  \S\ref{sec:tarone} makes that arithmetic explicit, and
+\S\ref{sec:demos} runs it.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[psaxis, width=7.4cm, height=5.0cm,
+    xmin=-0.7, xmax=8.7, ymin=0, ymax=0.30,
+    xlabel={$k$}, ylabel={$\Pr[X=k]$}]
+  \addplot[ycomb, sBlue, line width=2.4pt, mark=*, mark size=1.5pt]
+    coordinates {(0,0.003906) (1,0.031250) (2,0.109375) (3,0.218750)
+      (4,0.273438) (5,0.218750) (6,0.109375) (7,0.031250) (8,0.003906)};
+  \node[pslabel, color=sBlue, anchor=south west] at (axis cs:4.6,0.25)
+    {Binomial$(8,\,0.5)$};
+  \node[pslabel, color=sBlue, anchor=south west] at (axis cs:4.6,0.225)
+    {$\rho=0$};
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[psaxis, width=7.4cm, height=5.0cm,
+    xmin=-0.7, xmax=8.7, ymin=0, ymax=0.30,
+    xlabel={$k$}, ylabel={}]
+  \addplot[ycomb, sMagenta, line width=2.4pt, mark=*, mark size=1.5pt]
+    coordinates {(0,0.095783) (1,0.109466) (2,0.115830) (3,0.118961)
+      (4,0.119920) (5,0.118961) (6,0.115830) (7,0.109466) (8,0.095783)};
+  \node[pslabel, color=sMagenta, anchor=south west] at (axis cs:4.6,0.25)
+    {Beta-binomial$(8,\,\bar p{=}0.5)$};
+  \node[pslabel, color=sMagenta, anchor=south west] at (axis cs:4.6,0.225)
+    {$\rho=0.3$};
+\end{axis}
+\end{tikzpicture}
+\caption{The same eight flips at the same mean rate, differing only in
+where the coin comes from.  Left: one coin for everyone --- the binomial
+concentrates on four heads.  Right: a coin drawn per unit with
+intraclass correlation $\rho=0.3$ --- the mean is unmoved at $4$, but the
+mass has fled to the extremes, because a unit that drew a high $p$ tends
+to produce a run.  The variance ratio is $1+(n-1)\rho = 3.1$.\
+\webfig{betabinomial}}
+\label{fig:betabin}
+\end{figure}
+
+\srcref{src/dist.c: ps\_beta\_binomial(), ps\_beta\_binomial\_pmf(),
+        ps\_beta\_binomial\_cdf(), ps\_beta\_binomial\_ab()}
 
 \section{The continuous family}\label{sec:continuous}
 
@@ -1321,6 +1439,56 @@ for the difference in means that any experiment report should carry.
 
 \srcref{src/stats.c: ps\_t\_test\_welch()}
 
+\subsection{Testing for overdispersion}\label{sec:tarone}
+
+The $t$-tests ask whether a mean has moved.  The last test in the library
+asks something the beta-binomial of \S\ref{sec:betabin} made precise:
+whether all the trials really came from \emph{one} coin.  Given $m$
+clusters, $k_i$ successes in $n_i$ trials, $H_0$ says every trial
+everywhere is a flip of the same $p$; the mixture says each cluster draws
+its own.  Write $\hat p$ for the pooled proportion and
+\begin{equation}\label{eq:tarone}
+S=\sum_i \frac{(k_i-n_i\hat p)^2}{\hat p(1-\hat p)},\qquad
+T=\sum_i n_i(n_i-1),\qquad
+Z=\frac{S-N}{\sqrt{2T}},\qquad N=\sum_i n_i .
+\end{equation}
+$S$ is the usual Pearson-style sum of squared standardized deviations,
+and the arithmetic behind $Z$ is one line of bookkeeping:
+$\E[S]=N$ under $H_0$, while under the mixture $\E[S]=N+\rho T$.  So
+$S-N$ estimates $\rho T$, the moment estimate is
+$\hat\rho=(S-N)/T$, and dividing by the null standard deviation
+$\sqrt{2T}$ gives \citet{tarone1979}'s $C(\alpha)$ statistic, standard
+normal under $H_0$ and large-positive under overdispersion.  The test is
+one-sided by design: $\rho<0$ means clusters more uniform than chance
+allows, which is a different model (and usually a data-entry bug).
+Because it is a $C(\alpha)$ test, it needs no estimate of $\rho$ under
+the null and retains good power against the beta-binomial without
+assuming it --- any alternative whose variance inflates linearly in
+$\rho$ gets caught.
+
+The second form of the statistic is the one to remember:
+\begin{equation}\label{eq:tarone-power}
+Z=\hat\rho\sqrt{T/2}
+\qquad\Longrightarrow\qquad
+T \approx 2\left(\frac{z}{\rho}\right)^{2}.
+\end{equation}
+Detecting an intraclass correlation $\rho$ takes on the order of
+$2(z/\rho)^2$ \emph{ordered within-cluster pairs} --- and pairs, not
+trials, are the currency.  The cost is quadratic in $1/\rho$, which is
+why the sex-ratio question of \S\ref{sec:betabin} settles nothing at
+ordinary sample sizes: at $\rho=0.002$ and $z=3$, equation
+\eqref{eq:tarone-power} asks for $T\approx4.5$ million ordered pairs,
+which in sibships of four ($n_i(n_i-1)=12$ each) is some $375{,}000$
+families.  Five thousand families are not close, a million are
+comfortable, and that gap --- not any disagreement about the data --- is
+most of the published literature.  Note also that $T=0$ when every
+cluster has a single trial: no within-cluster pairs, nothing to compare,
+and the test is correctly undefined rather than merely uninformative.
+\S\ref{sec:demos} runs all four cases against data whose truth we set
+ourselves.
+
+\srcref{src/stats.c: ps\_tarone\_z()}
+
 \section{The driver and the tests}\label{sec:driver}
 
 The repository ships two executables that turn the theory above into
@@ -1346,8 +1514,9 @@ Exponential$(0.5)$  & $1.995$  & $2$    & $3.985$  & $4$ \\
 Normal$(10,2)$      & $10.001$ & $10$   & $3.985$  & $4$ \\
 Gamma$(3,2)$        & $6.009$  & $6$    & $12.002$ & $12$ \\
 Beta$(2,5)$         & $0.285$  & $0.286$& $0.0254$ & $0.0255$ \\
-Student's $t_8$     & $-0.002$ & $0$    & $1.332$  & $4/3$ \\
-$F_{5,12}$          & $1.201$  & $1.2$  & $1.077$  & $1.08$ \\
+Beta-binom$(20,2,5)$& $5.706$  & $5.714$& $13.760$ & $13.776$ \\
+Student's $t_8$     & $-0.001$ & $0$    & $1.331$  & $4/3$ \\
+$F_{5,12}$          & $1.203$  & $1.2$  & $1.100$  & $1.08$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -1357,12 +1526,40 @@ $F_{5,12}$          & $1.201$  & $1.2$  & $1.077$  & $1.08$ \\
 The driver then runs both tests of \S\ref{sec:inference} on data it has
 just simulated --- a situation where, uniquely, we \emph{know} the truth.
 A one-sample test of $N(10,2)$ data against its true mean ($H_0$ true)
-yielded $p=0.44$: no false alarm.  A Welch test of $N(10,2)$ against
-$N(11.5,3)$ ($H_0$ false) yielded $p=0.014$: difference detected.
+yielded $p=0.50$: no false alarm.  A Welch test of $N(10,2)$ against
+$N(11.5,3)$ ($H_0$ false) yielded $p=0.020$: difference detected.
 Re-running with other seeds shows the expected behaviour: under a true
 null the $p$-values scatter uniformly (occasionally below $0.05$ --- type
 I error is a feature, not a bug), while under the false null they
 concentrate near zero at this effect size and $n$.
+
+The driver closes with the experiment of \S\ref{sec:betabin}: simulated
+sibships of four, either from one common coin or from a coin drawn per
+family, handed to Tarone's test of \S\ref{sec:tarone}.  At the sex-ratio
+scale of heterogeneity, $\rho=0.002$, the run prints
+
+\begin{center}\small
+\begin{tabular}{lrrr}
+\toprule
+simulated truth & $\hat\rho$ & $Z$ & $p$ \\
+\midrule
+one coin, $10^6$ families        & $-0.00019$ & $-0.45$ & $0.68$ \\
+$\rho=0.002$, $5{,}000$ families & $-0.00141$ & $-0.24$ & $0.60$ \\
+$\rho=0.002$, $10^6$ families    & $+0.00200$ & $4.89$  & $5\times10^{-7}$ \\
+$\rho=0.05$, $5{,}000$ families  & $+0.03026$ & $5.24$  & $8\times10^{-8}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+which is the sex-ratio disagreement of \S\ref{sec:betabin} reproduced on
+demand, with the truth known in advance: the same real heterogeneity is
+invisible in five thousand families and overwhelming in a million, a
+homogeneous population never manufactures it, and a $\rho$ twenty-five
+times larger needs no registry at all.  The third and fourth rows are
+equation~\eqref{eq:tarone-power} in action --- $Z$ grows as
+$\rho\sqrt{T}$, so trading a factor of $25$ in $\rho$ buys back a factor
+of $625$ in the families required.
 
 \subsection{The test suite}\label{sec:tests}
 
@@ -1397,6 +1594,8 @@ Bernoulli   & single yes/no event        & proportion estimation, A/B tests \\
 Binomial    & successes in $n$ trials    & exact tests of proportions \\
 Geometric   & failures until success     & retry/attrition modeling \\
 Poisson     & rare-event counts          & count regression, goodness of fit \\
+Beta-binomial & counts when $p$ varies between units
+  & overdispersion tests; lot sampling \\
 Uniform     & total ignorance on a range & $p$-values under $H_0$; simulation \\
 Exponential & memoryless waiting time    & survival \& reliability baselines \\
 Normal      & sums of small effects      & CLT; regression noise \\
