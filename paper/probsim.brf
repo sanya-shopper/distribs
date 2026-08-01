@@ -20,8 +20,8 @@
 \backcite {greenwood1920}{{8}{3.5}{section*.10}}
 \backcite {bayes1763}{{8}{3.6}{section*.11}}
 \backcite {skellam1948}{{8}{3.6}{section*.11}}
-\backcite {edwards1958}{{8}{3.6}{section*.11}}
-\backcite {lindsey1998}{{8}{3.6}{section*.11}}
+\backcite {edwards1958}{{9}{3.6}{section*.11}}
+\backcite {lindsey1998}{{9}{3.6}{section*.11}}
 \backcite {jacobsen1999}{{9}{3.6}{section*.11}}
 \backcite {laplace1812}{{9}{4.1}{section*.12}}
 \backcite {demoivre1738}{{10}{4.3}{section*.14}}
@@ -40,13 +40,13 @@
 \backcite {fisher1925}{{15}{4.8}{section*.19}}
 \backcite {pollard1975}{{15}{4.9}{subsection.4.9}}
 \backcite {knuth1997}{{15}{4.9}{subsection.4.9}}
-\backcite {rayleigh1880}{{15}{4.9}{section*.20}}
+\backcite {rayleigh1880}{{16}{4.9}{section*.20}}
 \backcite {fishertippett1928}{{16}{4.10}{subsection.4.10}}
 \backcite {nist2010}{{16}{4.10}{subsection.4.10}}
 \backcite {gumbel1958}{{16}{4.10}{section*.21}}
 \backcite {press1992}{{17}{5.1}{equation.5.2}}
 \backcite {welford1962}{{17}{5.2}{equation.5.3}}
-\backcite {welch1947}{{18}{5.3}{subsection.5.3}}
+\backcite {welch1947}{{17}{5.3}{subsection.5.3}}
 \backcite {satterthwaite1946}{{18}{5.3}{equation.5.4}}
 \backcite {tarone1979}{{18}{5.4}{equation.5.5}}
 \backcite {devroye1986}{{20}{7}{section.7}}

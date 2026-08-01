@@ -85,6 +85,11 @@
 % The interactive web edition (docs/index.html), served via GitHub Pages
 % from the sanya-shopper/distribs repository.
 \newcommand{\siteurl}{https://sanya-shopper.github.io/distribs/}
+% The sibling project randtests (sanya-shopper/randtests): a survey of the
+% statistical test suites for PRNGs and hash functions (Diehard, NIST
+% SP 800-22, TestU01, PractRand, SMHasher).  It links back to this paper
+% from every page; the pointers below return the favour.
+\newcommand{\sisterurl}{https://sanya-shopper.github.io/randtests/}
 % Tag for figure captions whose web counterpart is animated/interactive.
 \newcommand{\webfig}[1]{{\small\sffamily\color{inkS}%
   [\href{\siteurl\##1}{interactive version on the web}]}}
@@ -121,7 +126,10 @@ these sections back, so paper and code can be read side by side.  This
 paper also has \href{\siteurl}{an interactive web edition}
 (\texttt{docs/index.html}, served via GitHub Pages) with every figure
 animated --- each figure caption below links to its interactive
-counterpart.
+counterpart.  A sibling project, \href{\sisterurl}{randtests}, surveys
+the statistical test suites (Diehard, NIST SP~800-22, TestU01, PractRand)
+that put several of these distributions to work against real generators
+and hash functions.
 \end{abstract}
 
 % ---- the distributions at a glance (every entry is a hyperlink) ----
@@ -414,7 +422,10 @@ statistical tests, so the case for quality is empirical --- and should be
 read the same way as any experiment.  xoshiro256++ shows \emph{no
 systematic failures} on BigCrush, the most demanding battery in the
 TestU01 suite \citep{lecuyer2007testu01}, and no anomalies in long
-PractRand runs \citep{dotyhumphrey_practrand}.  More telling is a test the
+PractRand runs \citep{dotyhumphrey_practrand}.  (What these batteries
+actually contain, and how they compare with the rest of the testing
+landscape, is the subject of the sibling survey
+\href{\sisterurl}{randtests}.)  More telling is a test the
 authors built precisely because the standard suites missed something: raw
 $\mathbb{F}_2$-linear engines exhibit long-range dependencies in the
 \emph{Hamming weight} (popcount) of their outputs, invisible to BigCrush.
@@ -648,7 +659,9 @@ attempt succeeds with probability $p$, the total work to collect $r$
 successes is NB-distributed --- which, with $p$ of order $2^{-n}$, is
 exactly the cost model for finding $r$ preimages or $r$ collisions
 against an ideal $n$-bit hash, the multi-target attacks of
-\S\ref{sec:rayleigh}'s annex.  As a \emph{count model} it is the
+\S\ref{sec:rayleigh}'s annex (the empirical side of that story ---
+collision statistics as a working test of real hash functions --- is
+covered by \href{\sisterurl hashing.html}{the sibling survey}).  As a \emph{count model} it is the
 gamma-mixed Poisson: let the Poisson rate of \S\ref{sec:poisson} itself
 vary as a gamma (\S\ref{sec:gamma}) across units and the marginal count
 is negative binomial, with the variance exceeding the mean --- the
@@ -1248,7 +1261,9 @@ speeds; and wherever squared Gaussian components pair up --- speckle in
 ultrasound and synthetic-aperture imagery.  In the hash-modeling annex
 it is the distribution to simulate when estimating collision-search cost
 under resource constraints, as the driver's Rayleigh row does in
-miniature.
+miniature.  The same ball-and-bin picture, run as a test rather than a
+bound, is Diehard's birthday-spacings test; the sibling survey covers it
+alongside \href{\sisterurl diehard.html}{the rest of Marsaglia's battery}.
 
 \srcref{src/dist.c: ps\_rayleigh(), ps\_rayleigh\_pdf(),
         ps\_rayleigh\_cdf()}
@@ -1274,7 +1289,9 @@ bucket of a hash table, the longest probe sequence, and the longest run
 of identical bits in an $n$-bit output stream --- approximately
 $\log_2 n$ plus Gumbel-type fluctuation (up to lattice effects), the null
 distribution behind the longest-run-of-ones test in NIST's randomness
-battery for cryptographic generators \citep{nist2010}.  Sampling is
+battery for cryptographic generators \citep{nist2010} --- all fifteen
+NIST tests, and their published criticisms, are walked through on
+\href{\sisterurl nist-sts.html}{the sibling site}.  Sampling is
 double-log inversion, $X=\mu-\beta\ln(-\ln U)$.
 
 \paragraph{Origins and habitat.}
@@ -1517,6 +1534,9 @@ Beta$(2,5)$         & $0.285$  & $0.286$& $0.0254$ & $0.0255$ \\
 Beta-binom$(20,2,5)$& $5.706$  & $5.714$& $13.760$ & $13.776$ \\
 Student's $t_8$     & $-0.001$ & $0$    & $1.331$  & $4/3$ \\
 $F_{5,12}$          & $1.203$  & $1.2$  & $1.100$  & $1.08$ \\
+Neg.\ binom$(3,0.4)$& $4.505$  & $4.5$  & $11.247$ & $11.25$ \\
+Rayleigh$(2)$       & $2.504$  & $2.507$& $1.710$  & $1.717$ \\
+Gumbel$(0.5,2)$     & $1.648$  & $1.654$& $6.612$  & $6.580$ \\
 \bottomrule
 \end{tabular}
 \end{center}

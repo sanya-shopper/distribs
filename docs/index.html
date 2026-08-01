@@ -340,8 +340,10 @@ p.hist b { color: var(--ink); }
     2¹²⁸ and 2¹⁹² steps, giving parallel streams that are guaranteed never
     to overlap.  For the sibling *&nbsp;/&nbsp;** scramblers the authors
     prove 4-dimensional equidistribution at this state size.
-    <strong>Measured:</strong> no systematic failures on TestU01's
-    BigCrush battery (L'Ecuyer &amp; Simard 2007), clean long PractRand
+    <strong>Measured:</strong> no systematic failures on
+    <a href="https://sanya-shopper.github.io/randtests/testu01.html">TestU01</a>'s
+    BigCrush battery (L'Ecuyer &amp; Simard 2007), clean long
+    <a href="https://sanya-shopper.github.io/randtests/practrand.html">PractRand</a>
     runs, and a pass on the Hamming-weight dependency test the authors
     invented after finding that raw linear engines carry popcount biases
     BigCrush cannot see.  <strong>Open — and out of scope:</strong> no
@@ -368,7 +370,10 @@ p.hist b { color: var(--ink); }
   <p class="xref"><b>Paper:</b> §2.2 &amp; Figure 3 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/rng.c"><code>src/rng.c</code></a>
     · Blackman &amp; Vigna (2021), Marsaglia (2003), Vigna (2016),
-    L'Ecuyer &amp; Simard (2007)</p>
+    L'Ecuyer &amp; Simard (2007)
+    · <b>Sister site:</b> the test suites themselves — what BigCrush and
+    PractRand actually run, and what they have caught — are surveyed at
+    <a href="https://sanya-shopper.github.io/randtests/">randtests</a></p>
 </section>
 
 <section class="panel" id="discrete">
@@ -451,7 +456,9 @@ p.hist b { color: var(--ink); }
       <p class="hist"><b>History:</b> a gambling wait in Montmort (1714),
         reborn with Greenwood &amp; Yule (1920) as the law of accident
         proneness — the original overdispersion argument.  Today it prices
-        multi-collision searches against an ideal hash and models clumped
+        multi-collision searches against an ideal hash (see the
+        <a href="https://sanya-shopper.github.io/randtests/hashing.html#collisions">collision
+        statistics</a> page of the sister site) and models clumped
         counts from insurance claims to RNA-seq.</p>
       <div class="viz"><canvas id="cv-negbin" height="230"></canvas></div>
       <div class="controls">
@@ -768,7 +775,12 @@ p.hist b { color: var(--ink); }
   </div>
   <p class="xref"><b>Paper:</b> §4.9 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
-    ps_rayleigh()</code></a> · Rayleigh (1880), Pollard (1975)</p>
+    ps_rayleigh()</code></a> · Rayleigh (1880), Pollard (1975)
+    · <b>Sister site:</b> the birthday bound as a working test —
+    <a href="https://sanya-shopper.github.io/randtests/hashing.html#collisions">collision
+    statistics for hash functions</a> and Diehard's
+    <a href="https://sanya-shopper.github.io/randtests/diehard.html#tests">birthday-spacings
+    test</a></p>
 
   <h3 id="gumbel">Gumbel — the fullest bucket</h3>
   <p>
@@ -797,7 +809,10 @@ p.hist b { color: var(--ink); }
   <p class="xref"><b>Paper:</b> §4.10 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
     ps_gumbel()</code></a> · Fisher &amp; Tippett (1928), Gumbel (1958),
-    NIST SP 800-22</p>
+    NIST SP 800-22
+    · <b>Sister site:</b> the longest-run law in the field —
+    <a href="https://sanya-shopper.github.io/randtests/nist-sts.html#tests">NIST
+    SP 800-22's fifteen tests</a></p>
 </section>
 
 <section class="panel" id="ttest">
@@ -961,7 +976,11 @@ p.hist b { color: var(--ink); }
     probsim — a C99 library, a typeset paper, and this site, kept in sync:
     the code cites paper sections, the paper cites functions, and both link
     here.  <a href="probsim.pdf">Full paper (PDF)</a> ·
-    <a data-repo href="#">source repository</a>. Last updated 2026-08-02.
+    <a data-repo href="#">source repository</a> · Sibling project:
+    <a href="https://sanya-shopper.github.io/randtests/">randtests</a>,
+    a survey of the statistical test suites (Diehard, NIST SP 800-22,
+    TestU01, PractRand, SMHasher) that put these distributions to work.
+    Last updated 2026-08-02.
   </div>
 </footer>
 

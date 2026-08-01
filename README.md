@@ -91,3 +91,18 @@ annex" (paper §3.5, §4.9–§4.10): less common in introductory courses, but
 exactly the laws that govern an ideal cryptographic hash — multi-collision
 search cost (negative binomial), the birthday bound (Rayleigh), and
 worst-case bucket loads and longest runs (Gumbel).
+
+## Sibling project: randtests
+
+probsim has a sibling project, **randtests**
+([repo](https://github.com/sanya-shopper/randtests) ·
+[site](https://sanya-shopper.github.io/randtests/)), which surveys the
+statistical test suites for PRNGs and hash functions — Diehard, Dieharder,
+NIST SP 800-22, TestU01, PractRand, ENT, SMHasher — with the same
+conventions (site in `docs/`, cross-referenced sources, fetchable refs,
+sync-enforcing hooks).  The two are complementary: where probsim derives
+the distributions (the uniform null of §4.1, the chi-squared of §4.7, the
+Rayleigh birthday bound of §4.9, the Gumbel longest-run law of §4.10),
+randtests covers the batteries that use them against real generators —
+including the TestU01 and PractRand runs cited for xoshiro256++ in
+paper §2.2.
