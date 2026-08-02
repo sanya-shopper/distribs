@@ -1177,8 +1177,8 @@ and the same arithmetic gives
 \]
 now with mean $3$ and variance $6$.  The firefly's distance from the
 bulb is a scaled $\chi_3$ --- Maxwell's law for the speed of a gas
-molecule, whose square is the scaled $\chi^2_3$ kinetic energy met in
-the next paragraph: one firefly hovering around a light is,
+molecule, whose square is the scaled $\chi^2_3$ kinetic energy met
+under \emph{Origins} below: one firefly hovering around a light is,
 distributionally, one gas molecule's velocity vector.
 
 \begin{figure}[htbp]
@@ -1235,6 +1235,42 @@ speed law.  The dotted trail is the flight path across earlier
 frames.}
 \label{fig:firefly}
 \end{figure}
+
+\paragraph{Balls into bins: measuring deviations from expected counts.}
+The workhorse use of $\chi^2$ in practice is Pearson's own: throw $n$
+balls into $m$ bins --- $n$ die rolls onto six faces, $n$ PRNG outputs
+into $m$ equal subintervals, $n$ keys into a hash table's buckets ---
+and ask whether the observed occupancies $O_1,\dots,O_m$ are compatible
+with the expected ones $E_i$ (all $n/m$ when the null is uniform).  The
+discrepancy measure is
+\[
+Q=\sum_{i=1}^{m}\frac{(O_i-E_i)^2}{E_i}
+\;\xrightarrow{\;d\;}\;\chi^2_{m-1},
+\]
+one degree lost because the counts must sum to $n$, and one more per
+parameter estimated from the data if the $E_i$ came from a fitted model
+--- Fisher's rule yet again.  The analysis in practice has three steps:
+make the bins fat enough for the asymptotics to hold (the standing rule
+of thumb is $E_i\ge 5$, merging sparse bins until it does), compute
+$Q$, and read the upper tail $1-F_{\chi^2_{m-1}}(Q)$ as the $p$-value
+--- in this library, one call to \texttt{ps\_chi\_squared\_cdf}.  The
+distribution's moments are the measurement's calibration: under the
+null $Q$ has mean $m-1$ and variance $2(m-1)$, so the \emph{reduced}
+statistic $Q/(m-1)$ should sit near $1\pm\sqrt{2/(m-1)}$ ---
+physicists' ``chi-squared per degree of freedom''.  Values far
+above~$1$ mean the counts are too uneven: a loaded die, a biased
+generator, a hash function clustering its keys.  Values far
+\emph{below}~$1$ mean they are too even, and are read as evidence of
+selection or fabrication --- Fisher's famous complaint that Mendel's
+ratios fit better than chance allows.  Common measurements built on
+$Q$: the goodness-of-fit $p$-value itself; the effect size
+$\phi^2=Q/n$, which unlike $Q$ does not grow with sample size; for an
+$r\times c$ contingency table (balls classified two ways, expectations
+from the margins, $(r-1)(c-1)$ degrees) the independence test and its
+normalized strength, Cram\'er's $V=\sqrt{Q/(n\min(r{-}1,c{-}1))}$; and,
+run at scale against real generators, the equidistribution half of the
+Diehard and NIST batteries surveyed by the sibling
+\href{\sisterurl}{randtests} project.
 
 \paragraph{Origins and habitat.}
 The distribution was first derived by the geodesist Friedrich Helmert

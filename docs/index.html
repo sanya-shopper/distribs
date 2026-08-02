@@ -688,6 +688,24 @@ p.hist b { color: var(--ink); }
     scatter about the centre against χ²<sub>2<em>n</em>−2</sub>
     (is the dispersion within design tolerance σ₀?).
   </p>
+  <p>
+    Its workhorse use is <em>balls into bins</em>: throw <em>n</em> balls
+    (die rolls, PRNG outputs, hash keys) into <em>m</em> bins and compare
+    observed counts <em>O<sub>i</sub></em> with expected
+    <em>E<sub>i</sub></em> via
+    Q&nbsp;=&nbsp;Σ(O<sub>i</sub>−E<sub>i</sub>)²/E<sub>i</sub>&nbsp;~&nbsp;χ²<sub><em>m</em>−1</sub>
+    (keep every E<sub>i</sub>&nbsp;≥&nbsp;5, merging sparse bins; lose one
+    more df per fitted parameter).  Under the null Q averages
+    <em>m</em>−1 with variance 2(<em>m</em>−1), so Q/(<em>m</em>−1) should
+    sit near 1: far above means counts too uneven (loaded die, biased
+    generator, clustering hash), far below means too even — Fisher's
+    complaint about Mendel.  From Q come the p-value (one call to
+    <code>ps_chi_squared_cdf</code>), the effect sizes φ²&nbsp;=&nbsp;Q/n
+    and Cramér's V, and the equidistribution tests of the Diehard and NIST
+    batteries covered by the sibling
+    <a href="https://sanya-shopper.github.io/randtests/">randtests</a>
+    survey.
+  </p>
   <p class="hist"><b>History:</b> derived by the geodesist Helmert (1876)
     for surveying errors, then made universal by Pearson's goodness-of-fit
     criterion (1900) — among the most consequential papers in science.
