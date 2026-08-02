@@ -1090,6 +1090,37 @@ independence tests, and the asymptotic null distribution of
 likelihood-ratio statistics (Wilks' theorem) --- which makes $\chi^2$
 tail areas the common currency of model comparison.
 
+\paragraph{Two degrees of freedom: darts and rifles.}
+The cleanest picture of $\chi^2$ is the $k=2$ case.  Throw an arrow at a
+dartboard, aiming at the bullseye: if the horizontal and vertical misses
+are independent $N(0,\sigma^2)$ errors $X$ and $Y$, then
+\[
+\frac{X^2+Y^2}{\sigma^2}\sim\chi^2_2 ,
+\]
+which is Gamma$(1,2)$ --- a plain exponential.  Its mean is $k=2$ and
+its variance $2k=4$, so the expected squared miss distance is
+$2\sigma^2$ with standard deviation $2\sigma^2$; the miss \emph{radius}
+$\sqrt{X^2+Y^2}$ is the Rayleigh of \S\ref{sec:rayleigh}.  This picture
+is a working tool at the proof range.  To measure a rifle's intrinsic
+accuracy, the manufacturer clamps it in a machine rest --- eliminating
+the shooter, leaving barrel harmonics, ammunition and manufacturing
+tolerances --- and fires $n$ rounds, recording impacts $(x_i,y_i)$.
+Two questions, two $\chi^2$ tests.  \emph{Is it zeroed?}  If the rifle
+shoots where it points, with design dispersion $\sigma_0$ per axis, the
+group centre obeys $n(\bar x^2+\bar y^2)/\sigma_0^2\sim\chi^2_2$ ---
+the dartboard statistic itself; a large value means systematic bias (a
+misaligned sight, not bad luck).  \emph{Is it built to tolerance?}  The
+scatter about the group centre gives
+$\sum_i[(x_i-\bar x)^2+(y_i-\bar y)^2]/\sigma_0^2\sim\chi^2_{2n-2}$ ---
+$2n$ squared deviations minus two estimated means: estimate parameters,
+lose degrees.  With $n=10$ rounds the statistic is $\chi^2_{18}$, mean
+$18$ and standard deviation $\sqrt{36}=6$; observe more than the upper
+percentile $\chi^2_{18,\,0.99}\approx 34.8$ and the dispersion exceeds
+spec at the $1\%$ level.  Because the mean grows as $k$ while the
+standard deviation grows only as $\sqrt{2k}$, the relative fluctuation
+$\sqrt{2/k}$ shrinks with every extra round --- the arithmetic reason
+more test shots make a sharper acceptance test.
+
 \paragraph{Origins and habitat.}
 The distribution was first derived by the geodesist Friedrich Helmert
 (1876) while studying the sample variance of normal observations ---

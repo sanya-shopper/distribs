@@ -677,6 +677,17 @@ p.hist b { color: var(--ink); }
     variance in a normal sample, the engine of goodness-of-fit tests, and the
     denominator of the <em>t</em> statistic.
   </p>
+  <p>
+    The <em>k</em>&nbsp;=&nbsp;2 case is the dartboard: aim at the bullseye
+    with independent N(0,&nbsp;σ²) horizontal and vertical errors and the
+    squared miss distance is σ²·χ²₂ — mean 2σ², variance 4σ⁴ (mean <em>k</em>,
+    variance 2<em>k</em> in general), and exactly exponential.  Rifle makers
+    use it at the proof range: clamp the rifle in a machine rest so only its
+    intrinsic dispersion remains, fire <em>n</em> rounds, then test the group
+    centre against χ²₂ (is it zeroed, or systematically biased?) and the
+    scatter about the centre against χ²<sub>2<em>n</em>−2</sub>
+    (is the dispersion within design tolerance σ₀?).
+  </p>
   <p class="hist"><b>History:</b> derived by the geodesist Helmert (1876)
     for surveying errors, then made universal by Pearson's goodness-of-fit
     criterion (1900) — among the most consequential papers in science.
