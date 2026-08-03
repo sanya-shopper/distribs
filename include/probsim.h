@@ -65,6 +65,7 @@ double ps_geometric_pmf(long k, double p);
 /* Poisson(lambda): event counts at constant rate.             (paper §3.4) */
 long   ps_poisson(ps_rng *rng, double lambda);
 double ps_poisson_pmf(long k, double lambda);
+double ps_poisson_cdf(long k, double lambda);
 
 /* Negative binomial(r, p): failures before the r-th success
  * (generalizes the geometric, which is r = 1).                (paper §3.5) */

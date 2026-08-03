@@ -104,7 +104,7 @@
 % Deliberately a fixed date, not \today: the built PDF is committed and
 % checked for staleness against its sources (see Makefile: check-sync),
 % so a date that changed on every rebuild would report false drift.
-\date{Last updated 2026-08-02}
+\date{Last updated 2026-08-03}
 
 \begin{document}
 \maketitle
@@ -585,6 +585,12 @@ tests.  The library simulates it with Knuth's product-of-uniforms method
 \citep[\S3.4.1]{knuth1997} --- count uniforms until their running product
 drops below $e^{-\lambda}$ --- applied in chunks of rate at most 30 so the
 product never underflows; the chunking is valid because Poisson rates add.
+Its CDF ships through the \emph{continuous} family:
+$\Pr[N\le k]=1-P(k{+}1,\lambda)$ with $P$ the regularized incomplete
+gamma of \S\ref{sec:special}, because the count of events by time
+$\lambda$ and the wait for the $(k{+}1)$-th event are two descriptions
+of one process --- a discrete/continuous duality developed fully at the
+chi-squared (\S\ref{sec:chisq}).
 Figure~\ref{fig:pmfs} (right) shows Poisson$(4)$.
 
 \paragraph{Origins and habitat.}
@@ -640,7 +646,8 @@ visible signature of ``many opportunities, each rare''.\ \webfig{discrete}}
 \label{fig:pmfs}
 \end{figure}
 
-\srcref{src/dist.c: ps\_poisson(), ps\_poisson\_pmf()}
+\srcref{src/dist.c: ps\_poisson(), ps\_poisson\_pmf(),
+        ps\_poisson\_cdf()}
 
 \subsection{Negative binomial}\label{sec:negbin}
 
@@ -1272,6 +1279,45 @@ run at scale against real generators, the equidistribution half of the
 Diehard and NIST batteries surveyed by the sibling
 \href{\sisterurl}{randtests} project.
 
+\paragraph{Discrete twin, continuous limit.}
+The binomial has a discrete body and a continuous soul: de Moivre's
+theorem (\S\ref{sec:binomial}) approximates the integer count by the
+normal curve.  The $\chi^2$ tells the same story from the other shore,
+twice over.  First, it \emph{is} the continuous limit of a discrete
+variable: Pearson's $Q$ is built from integer counts, so it ranges over
+a lattice of isolated values --- for $m=2$ bins it collapses to exactly
+the squared standardized binomial,
+\[
+Q=\frac{(O_1-np)^2}{np(1-p)},\qquad O_1\sim\mathrm{Binomial}(n,p),
+\]
+so $Q\to\chi^2_1$ \emph{is} de Moivre--Laplace, squared.  For general
+$m$ the standardized multinomial deviations live on a lattice inside an
+$(m-1)$-dimensional hyperplane (the counts must sum to $n$); the
+lattice tightens to a Gaussian vector, and the squared length of a
+Gaussian vector is $\chi^2_{m-1}$ by the dartboard logic of
+Figure~\ref{fig:dartboard}.  The $\chi^2$ is to the multinomial exactly
+what the normal is to the binomial.  The driver runs the convergence
+live (\S\ref{sec:driver}): at $100$ balls in $2$ bins the lattice is
+still visible --- the nominal-5\% test rejects $6.0\%$ of the time ---
+while at $2000$ balls in $20$ bins the discrete statistic sits flush on
+its continuous law.  Second, the traffic also flows back: every
+\emph{even-df} $\chi^2$ tail is a finite \emph{discrete} sum,
+\[
+1-F_{\chi^2_{2k}}(x)
+= e^{-x/2}\sum_{j=0}^{k-1}\frac{(x/2)^j}{j!}
+= \Pr[\mathrm{Poisson}(x/2)\le k-1],
+\]
+because $\chi^2_{2k}=\mathrm{Gamma}(k,2)$ is the waiting time to the
+$k$-th event of a Poisson process (\S\ref{sec:gamma}): the $k$-th
+arrival comes after time $x$ precisely when at most $k-1$ events have
+occurred by then.  Count and wait are one process described discretely
+and continuously, and the library leans on the identity in both
+directions: \texttt{ps\_poisson\_cdf} evaluates the discrete Poisson
+CDF with one call to the continuous incomplete gamma
+(\S\ref{sec:special}), and the driver prints even-df $\chi^2$ tails
+beside the Poisson sums they equal --- agreeing to all printed digits,
+because they are the same number.
+
 \paragraph{Origins and habitat.}
 The distribution was first derived by the geodesist Friedrich Helmert
 (1876) while studying the sample variance of normal observations ---
@@ -1722,6 +1768,18 @@ Gumbel$(0.5,2)$     & $1.648$  & $1.654$& $6.612$  & $6.580$ \\
 \bottomrule
 \end{tabular}
 \end{center}
+
+Between the table and the $t$-tests the driver runs the balls-into-bins
+experiment of \S\ref{sec:chisq} ten thousand times at each of three
+scales, so the discrete Pearson $Q$ can be watched settling onto its
+continuous law: at $600$ balls in $6$ bins the sample mean and variance
+of $Q$ came out $5.02$ and $10.3$ against the theoretical $5$ and $10$,
+with the nominal-5\% test rejecting $5.1\%$ of runs, while the coarsest
+case --- $100$ balls in $2$ bins --- still betrays the underlying
+lattice with $6.0\%$ rejections.  It then prints even-df $\chi^2$ tail
+areas beside the finite Poisson sums they equal
+(\S\ref{sec:chisq}); the two columns agree to all fifteen printed
+digits, because they are the same number.
 
 \subsection{The t-tests, live}\label{sec:demos}
 

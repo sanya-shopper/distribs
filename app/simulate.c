@@ -6,12 +6,18 @@
  *
  *     ./simulate [seed] [n]      (defaults: seed 20260718, n 200000)
  *
- * The program does three things:
+ * The program does four things:
  *
  *   1. Simulates n draws from each of the thirteen classical distributions
  *      and prints the sample mean/variance next to the theoretical
  *      values, so agreement is visible at a glance (law of large
  *      numbers in action, paper §6.1).
+ *
+ *   1b. Runs the balls-into-bins experiment of paper §4.6: Pearson's
+ *      discrete Q statistic on uniform bin counts, repeated, so its
+ *      convergence onto the continuous chi-squared law is visible —
+ *      and prints even-df chi-squared tails next to the finite Poisson
+ *      sums they equal (the count/wait duality).
  *
  *   2. Runs the two t-tests of src/stats.c on freshly simulated data:
  *      a one-sample test where H0 is TRUE (the p-value should look
@@ -101,6 +107,52 @@ static void print_moments_table(ps_rng *rng, size_t n, double *buf)
 }
 
 /*
+ * Balls into bins (paper §4.6): Pearson's Q on m equal bins is a
+ * DISCRETE statistic — the counts are integers, so Q ranges over a
+ * lattice of values — whose large-n law is the continuous chi-squared
+ * with m-1 degrees of freedom, exactly as the discrete binomial's
+ * large-n law is the continuous normal.  Repeat the experiment and the
+ * discrete statistic is seen sitting on its continuous asymptote:
+ * mean near m-1, variance near 2(m-1), 5% of runs beyond the 95% point.
+ */
+#define MAX_BINS 64
+
+static void balls_into_bins_demo(ps_rng *rng, size_t experiments,
+                                 size_t balls, size_t bins)
+{
+    long counts[MAX_BINS];
+    if (bins < 2 || bins > MAX_BINS) return;
+
+    const double expect = (double)balls / (double)bins;
+    const double df = (double)bins - 1.0;
+    double sum_q = 0.0, sum_q2 = 0.0;
+    size_t rejections = 0;
+
+    for (size_t e = 0; e < experiments; e++) {
+        for (size_t i = 0; i < bins; i++) counts[i] = 0;
+        for (size_t b = 0; b < balls; b++) {
+            size_t i = (size_t)(ps_runif(rng) * (double)bins);
+            counts[i >= bins ? bins - 1 : i]++;
+        }
+        double q = 0.0;
+        for (size_t i = 0; i < bins; i++) {
+            const double d = (double)counts[i] - expect;
+            q += d * d / expect;
+        }
+        sum_q += q;
+        sum_q2 += q * q;
+        if (1.0 - ps_chi_squared_cdf(q, df) < 0.05) rejections++;
+    }
+
+    const double mean = sum_q / (double)experiments;
+    const double var  = sum_q2 / (double)experiments - mean * mean;
+    printf("  %4zu balls, %2zu bins   mean Q = %6.3f (df = %g)   "
+           "var Q = %7.3f (2 df = %g)   reject at 5%%: %.1f%%\n",
+           balls, bins, mean, df, var, 2.0 * df,
+           100.0 * (double)rejections / (double)experiments);
+}
+
+/*
  * Sibship demo (paper §3.6, §5.4): simulate `families` sibships of
  * `size` children each, either from one common coin (rho = 0) or from a
  * per-family coin drawn from Beta(a, b), then ask Tarone's test whether
@@ -168,6 +220,30 @@ int main(int argc, char **argv)
     printf("======================================================"
            "==============\n\n");
     print_moments_table(&rng, n, buf);
+
+    /* ---- discrete statistic, continuous law (paper §4.6) ---- */
+    printf("\nBalls into bins: discrete Pearson Q vs its continuous "
+           "chi-squared limit\n");
+    printf("------------------------------------------------------"
+           "--------------\n");
+    printf("  10000 experiments each; Q is integer-built, "
+           "chi-squared is its large-n law.\n\n");
+    balls_into_bins_demo(&rng, 10000, 100, 2);   /* Q = squared std binomial */
+    balls_into_bins_demo(&rng, 10000, 600, 6);   /* a fair die, 100 per face */
+    balls_into_bins_demo(&rng, 10000, 2000, 20);
+
+    /* The duality read the other way: even-df chi-squared tails ARE
+     * finite Poisson sums (paper §4.6), so the continuous tail area and
+     * the discrete CDF must agree to machine precision. */
+    printf("\n  Even-df chi-squared tails as finite Poisson sums "
+           "(x = 12.5916, the chi2_6 95%% point):\n");
+    for (long k = 1; k <= 3; k++) {
+        const double x = 12.591587243743977;
+        printf("    1 - F_chi2(x, %ld df) = %.15f   "
+               "Pr[Poisson(x/2) <= %ld] = %.15f\n",
+               2 * (k + 1), 1.0 - ps_chi_squared_cdf(x, 2.0 * (double)(k + 1)),
+               k, ps_poisson_cdf(k, x / 2.0));
+    }
 
     /* ---- t-test demos on simulated data (paper §6.2) ---- */
     printf("\nt-tests on freshly simulated data (m = 30 per sample)\n");

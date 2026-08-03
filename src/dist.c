@@ -121,6 +121,25 @@ double ps_poisson_pmf(long k, double lambda)
 }
 
 /*
+ * Poisson CDF via the count/wait duality (paper §3.4, §4.6): the
+ * (k+1)-th event of a unit-rate process arrives at a Gamma(k+1, 1)
+ * time, so "at most k events by time lambda" and "the (k+1)-th wait
+ * exceeds lambda" are the same event:
+ *
+ *     Pr[N <= k] = 1 - P(k+1, lambda) = Pr[chi^2_{2(k+1)} > 2*lambda].
+ *
+ * The discrete CDF is evaluated by the continuous machinery; the same
+ * identity read the other way computes every even-df chi-squared tail
+ * as a finite Poisson sum.
+ */
+double ps_poisson_cdf(long k, double lambda)
+{
+    if (!(lambda >= 0.0)) return NAN;
+    if (k < 0) return 0.0;
+    return 1.0 - ps_incgamma_lower((double)k + 1.0, lambda);
+}
+
+/*
  * Negative binomial(r, p) — paper §3.5.  Counts FAILURES before the
  * r-th success; the geometric of §3.3 is the case r = 1, and the
  * sampler is that identity: a sum of r independent geometric waits.

@@ -706,6 +706,22 @@ p.hist b { color: var(--ink); }
     <a href="https://sanya-shopper.github.io/randtests/">randtests</a>
     survey.
   </p>
+  <p>
+    Like the binomial — a discrete count whose continuous limit is the
+    normal — χ² works both sides of the discrete/continuous divide.
+    Pearson's Q is built from integer counts and lives on a lattice; for
+    m&nbsp;=&nbsp;2 it is exactly the squared standardized binomial, so
+    Q&nbsp;→&nbsp;χ²₁ <em>is</em> de Moivre–Laplace squared: χ² is to the
+    multinomial what the normal is to the binomial.  And the traffic flows
+    back — every even-df tail is a <em>finite Poisson sum</em>,
+    1&nbsp;−&nbsp;F<sub>χ²<sub>2k</sub></sub>(x) =
+    Pr[Poisson(x/2)&nbsp;≤&nbsp;k−1], because χ²<sub>2k</sub> is the
+    waiting time to the k-th Poisson event.  The library uses the identity
+    both ways: <code>ps_poisson_cdf</code> evaluates the discrete CDF with
+    one call to the continuous incomplete gamma, and the driver watches
+    discrete Q settle onto the continuous curve and prints even-df tails
+    beside the Poisson sums they equal.
+  </p>
   <p class="hist"><b>History:</b> derived by the geodesist Helmert (1876)
     for surveying errors, then made universal by Pearson's goodness-of-fit
     criterion (1900) — among the most consequential papers in science.
@@ -1009,7 +1025,7 @@ p.hist b { color: var(--ink); }
     <a href="https://sanya-shopper.github.io/randtests/">randtests</a>,
     a survey of the statistical test suites (Diehard, NIST SP 800-22,
     TestU01, PractRand, SMHasher) that put these distributions to work.
-    Last updated 2026-08-02.
+    Last updated 2026-08-03.
   </div>
 </footer>
 

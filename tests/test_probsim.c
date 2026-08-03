@@ -141,6 +141,13 @@ static void test_cdf_fixtures(void)
     /* scipy.stats.betabinom.cdf(14, 20, 2, 5) — summed from the right */
     CHECK_CLOSE(ps_beta_binomial_cdf(14, 20, 2.0, 5.0),
                 0.981574946792339, 1e-12);
+    /* scipy.stats.poisson.cdf(3, 4) — via the incomplete gamma */
+    CHECK_CLOSE(ps_poisson_cdf(3, 4.0), 0.433470120366709, 1e-12);
+    /* scipy.stats.poisson.cdf(10, 4) */
+    CHECK_CLOSE(ps_poisson_cdf(10, 4.0), 0.997160233879486, 1e-12);
+    CHECK(ps_poisson_cdf(-1, 4.0) == 0.0);
+    CHECK(ps_poisson_cdf(0, 0.0) == 1.0);
+    CHECK(isnan(ps_poisson_cdf(3, -1.0)));
     CHECK(ps_beta_binomial_cdf(-1, 20, 2.0, 5.0) == 0.0);
     CHECK(ps_beta_binomial_cdf(20, 20, 2.0, 5.0) == 1.0);
     CHECK(isnan(ps_beta_binomial_pmf(3, 20, -1.0, 5.0)));
@@ -171,6 +178,24 @@ static void test_special_identities(void)
 
     /* Shape-1 incomplete gamma is the exponential CDF: P(1,x) = 1-e^-x. */
     CHECK_CLOSE(ps_incgamma_lower(1.0, 2.0), -expm1(-2.0), 1e-12);
+
+    /* Count/wait duality (paper §3.4, §4.6): at most k Poisson(x/2)
+     * events iff the (k+1)-th wait — a chi^2 with 2(k+1) df — exceeds x:
+     * Pr[Poisson(x/2) <= k] + F_{chi^2_{2(k+1)}}(x) = 1. */
+    const double duality_x[] = { 0.5, 3.0, 12.0 };
+    for (long k = 0; k <= 8; k++)
+        for (size_t i = 0; i < sizeof duality_x / sizeof duality_x[0]; i++)
+            CHECK_CLOSE(ps_poisson_cdf(k, duality_x[i] / 2.0)
+                        + ps_chi_squared_cdf(duality_x[i], 2.0 * (double)(k + 1)),
+                        1.0, 1e-12);
+
+    /* And the CDF really is the pmf summed: the finite Poisson series. */
+    for (long k = 0; k <= 8; k++) {
+        double s = 0.0;
+        for (long j = 0; j <= k; j++)
+            s += ps_poisson_pmf(j, 4.0);
+        CHECK_CLOSE(ps_poisson_cdf(k, 4.0), s, 1e-12);
+    }
 
     /* CDF bounds. */
     CHECK(ps_incbeta(0.0, 2.0, 3.0) == 0.0);
