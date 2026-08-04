@@ -1,6 +1,7 @@
 /*
  * dist.c — samplers, pmfs/pdfs and CDFs for the thirteen classical
- * distributions.
+ * distributions and the three-member hash-modeling annex (sixteen in
+ * all).
  *
  * Explained distribution-by-distribution in the companion paper,
  * paper/probsim.tex §3 (discrete) and §4 (continuous); each function below

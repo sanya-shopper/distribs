@@ -8,7 +8,7 @@
  *
  * The program does four things:
  *
- *   1. Simulates n draws from each of the thirteen classical distributions
+ *   1. Simulates n draws from each of the sixteen distributions
  *      and prints the sample mean/variance next to the theoretical
  *      values, so agreement is visible at a glance (law of large
  *      numbers in action, paper §6.1).

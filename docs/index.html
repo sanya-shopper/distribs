@@ -538,7 +538,7 @@ p.hist b { color: var(--ink); }
     litter, couple or plot has its own propensity, and manufacturing,
     where each production lot has its own defect rate.</p>
 
-  <p class="xref"><b>Paper:</b> §3 &amp; Figure 4, §3.6, §5.4 —
+  <p class="xref"><b>Paper:</b> §3 &amp; Figure 4, §3.6 &amp; Figure 5, §5.4 —
     <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
     ps_bernoulli() … ps_beta_binomial()</code></a>
@@ -578,7 +578,7 @@ p.hist b { color: var(--ink); }
     <button id="pol-reset">reset</button>
     <span class="readout" id="pol-read"></span>
   </div>
-  <p class="xref"><b>Paper:</b> §4.3 &amp; Figure 5 — <a href="probsim.pdf">PDF</a>
+  <p class="xref"><b>Paper:</b> §4.3 &amp; Figure 6 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_normal()</code></a>
     · Box &amp; Muller (1958)</p>
 
@@ -631,7 +631,7 @@ p.hist b { color: var(--ink); }
     <button id="gam-sample">draw 400 samples</button>
     <span class="readout" id="gam-read"></span>
   </div>
-  <p class="xref"><b>Paper:</b> §4.4 &amp; Figure 6 — <a href="probsim.pdf">PDF</a>
+  <p class="xref"><b>Paper:</b> §4.4 &amp; Figure 7 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_gamma()</code></a>
     · Marsaglia &amp; Tsang (2000)</p>
 
@@ -667,7 +667,7 @@ p.hist b { color: var(--ink); }
     <button id="bet-sample">draw 400 samples</button>
     <span class="readout" id="bet-read"></span>
   </div>
-  <p class="xref"><b>Paper:</b> §4.5 &amp; Figure 7 — <a href="probsim.pdf">PDF</a>
+  <p class="xref"><b>Paper:</b> §4.5 &amp; Figure 8 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c: ps_beta()</code></a></p>
 
   <h3 id="chisq">Chi-squared — accumulated squared noise</h3>
@@ -735,7 +735,7 @@ p.hist b { color: var(--ink); }
     <button id="chi-sample">draw 400 samples</button>
     <span class="readout" id="chi-read"></span>
   </div>
-  <p class="xref"><b>Paper:</b> §4.6 — <a href="probsim.pdf">PDF</a>
+  <p class="xref"><b>Paper:</b> §4.6 &amp; Figures 9–10 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
     ps_chi_squared()</code></a></p>
 
@@ -762,7 +762,7 @@ p.hist b { color: var(--ink); }
     <button id="t-sample">draw 400 samples</button>
     <span class="readout" id="t-read"></span>
   </div>
-  <p class="xref"><b>Paper:</b> §4.7 &amp; Figure 8 — <a href="probsim.pdf">PDF</a>
+  <p class="xref"><b>Paper:</b> §4.7 &amp; Figure 11 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/dist.c"><code>src/dist.c:
     ps_student_t()</code></a> · Student (1908)</p>
 
@@ -891,7 +891,7 @@ p.hist b { color: var(--ink); }
     The <em>p</em>-value histogram fills in when you press “run 400 tests”:
     flat when H₀ is true (δ = 0), piled near zero when it is false.
   </p>
-  <p class="xref"><b>Paper:</b> §5 &amp; Figure 9 — <a href="probsim.pdf">PDF</a>
+  <p class="xref"><b>Paper:</b> §5 &amp; Figure 12 — <a href="probsim.pdf">PDF</a>
     · <b>Code:</b> <a data-code="src/stats.c"><code>src/stats.c:
     ps_t_test_one_sample(), ps_t_test_welch()</code></a>
     · <a data-code="src/special.c"><code>src/special.c: ps_incbeta()</code></a>
@@ -1025,7 +1025,7 @@ p.hist b { color: var(--ink); }
     <a href="https://sanya-shopper.github.io/randtests/">randtests</a>,
     a survey of the statistical test suites (Diehard, NIST SP 800-22,
     TestU01, PractRand, SMHasher) that put these distributions to work.
-    Last updated 2026-08-03.
+    Last updated 2026-08-04.
   </div>
 </footer>
 

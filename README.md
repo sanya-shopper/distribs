@@ -1,6 +1,6 @@
 # probsim — classical probability distributions in C99
 
-*Last updated 2026-08-03.*
+*Last updated 2026-08-04.*
 
 A small, portable C99 library and driver application that simulates the major
 classical probability distributions, together with a typeset companion paper
@@ -15,9 +15,9 @@ into the *t*-test.
 | `include/probsim.h`     | Public API: RNG, samplers, densities/CDFs, stats, *t*-tests     | paper §2–§5   |
 | `src/rng.c`             | xoshiro256++ generator + splitmix64 seeding                     | paper §2      |
 | `src/special.c`         | Regularized incomplete beta/gamma functions                     | paper §5.1    |
-| `src/dist.c`            | Samplers, PDFs/PMFs and CDFs for the 13 distributions           | paper §3–§4   |
+| `src/dist.c`            | Samplers, PDFs/PMFs and CDFs for the 16 distributions           | paper §3–§4   |
 | `src/stats.c`           | Descriptive statistics (Welford), *t*-tests, Tarone's test      | paper §5      |
-| `app/simulate.c`        | Driver: theoretical vs. empirical moments, *t*-test demos       | paper §6      |
+| `app/simulate.c`        | Driver: moments, balls-into-bins, *t*-test and Tarone demos     | paper §6      |
 | `tests/test_probsim.c`  | Unit tests: CDF spot values, moment checks, *t*-test fixtures   | paper §6      |
 | `paper/probsim.tex`     | Companion paper (LaTeX)                                         | —             |
 | `paper/references.bib`  | Bibliography (BibTeX)                                           | —             |
