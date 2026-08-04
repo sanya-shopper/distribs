@@ -978,6 +978,30 @@ accumulated sum turns normal --- the central limit theorem operating
 queueing, accumulated evidence about a rate in Bayesian inference,
 accumulated squared noise in sampling theory.
 
+\paragraph{A roadside experiment.}
+The family earns its keep --- all of it, not just the named special
+cases --- in a place anyone can watch: gaps in traffic.  Stand at the
+roadside with a stopwatch and time the \emph{headways}, the seconds
+between one car passing and the next.  On an empty road at night the
+arrivals are memoryless and the headways come out exponential ---
+Gamma$(1,\theta)$, Poisson traffic.  In dense traffic the mechanics of
+car-following take over: no driver sits closer than a safe gap, so the
+headways bunch tightly around a preferred value --- large $k$, the
+near-normal end of the family.  Ordinary daytime traffic lives in
+between and fits neither special case, which is why the standard
+headway model of traffic engineering is the full gamma (Pearson
+Type~III) with fractional shape \citep{may1990}: the shape parameter
+acts as a physical \emph{regularity dial} --- coefficient of variation
+$1/\sqrt{k}$ --- turning continuously from chaos ($k=1$) toward
+clockwork ($k\to\infty$) as the road fills.  One phenomenon, one
+parameter, sweeping the entire family; you can watch rush hour turn
+the dial.  Meteorology learned the same lesson from raindrop sizes:
+the classical \citet{marshall1948} spectrum was exponential, but it
+over-counts both drizzle and the largest drops, and the accepted
+correction \citep{ulbrich1983} is exactly the gamma with its shape set
+free --- a distribution once sampled by hand, by letting drops fall
+into a pan of flour and sieving the dough pellets they leave.
+
 Summing exponentials only works for integer $k$, so the library uses the
 one algorithm where we accept a little cleverness for a lot of practical
 value: the \citet{marsaglia2000gamma} method, the standard choice of
