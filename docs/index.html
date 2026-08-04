@@ -722,6 +722,33 @@ p.hist b { color: var(--ink); }
     discrete Q settle onto the continuous curve and prints even-df tails
     beside the Poisson sums they equal.
   </p>
+  <div id="bins">
+  <p>
+    <b>Try it — balls into bins, live.</b>  Each press of “throw” drops
+    <em>n</em> balls uniformly into <em>m</em> bins, computes the discrete
+    statistic Q&nbsp;=&nbsp;Σ(O<sub>i</sub>−n/m)²/(n/m) for that one
+    experiment (top panel), and adds it to the growing histogram of Q
+    values (bottom panel).  Watch the calibrations above come true: the
+    integer-built Q fills in the smooth χ²<sub><em>m</em>−1</sub> curve,
+    its running mean settles on <em>m</em>−1 and its variance on
+    2(<em>m</em>−1), and the share of throws past the 95% point settles on
+    5%.  Then slide <em>m</em> down to 2 and <em>n</em> down to 100: the
+    histogram turns into separated spikes — the discrete lattice showing
+    through before the continuous limit takes over.
+  </p>
+  <div class="viz"><canvas id="cv-bins-throw" height="180"></canvas></div>
+  <div class="viz"><canvas id="cv-bins-q" height="240"></canvas></div>
+  <div class="controls">
+    <label>bins m <input type="range" id="bin2-m" min="2" max="20" step="1"
+      value="6"> <span class="val" id="bin2-m-v">6</span></label>
+    <label>balls n <input type="range" id="bin2-n" min="100" max="3000"
+      step="100" value="600"> <span class="val" id="bin2-n-v">600</span></label>
+    <button id="bin2-throw">throw once</button>
+    <button id="bin2-throw200">throw ×200</button>
+    <button id="bin2-reset">reset</button>
+    <span class="readout" id="bin2-read"></span>
+  </div>
+  </div>
   <p class="hist"><b>History:</b> derived by the geodesist Helmert (1876)
     for surveying errors, then made universal by Pearson's goodness-of-fit
     criterion (1900) — among the most consequential papers in science.
@@ -2464,6 +2491,146 @@ function densityPanel(cvId, h, getState, spec) {
     $('chi-read').textContent =
       `mean k = ${k}   variance 2k = ${2 * k}`;
   });
+})();
+
+/* Balls into bins: the discrete Pearson Q filling in its continuous
+ * chi-squared limit (mirrors the driver demo and paper §4.6). */
+(function () {
+  let m = 6, n = 600, counts = null, qs = [], lastQ = null, lastP = null;
+
+  /* 95% point of chi^2_df by bisection on the regularized gamma. */
+  const critCache = {};
+  function chi2Crit95(df) {
+    if (critCache[df]) return critCache[df];
+    let lo = 0, hi = df + 10 * Math.sqrt(2 * df) + 10;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (incgammaP(df / 2, mid / 2) < 0.95) lo = mid; else hi = mid;
+    }
+    return (critCache[df] = (lo + hi) / 2);
+  }
+
+  function throwOnce() {
+    counts = new Array(m).fill(0);
+    for (let b = 0; b < n; b++)
+      counts[Math.min(m - 1, Math.floor(Math.random() * m))]++;
+    const e = n / m;
+    let q = 0;
+    counts.forEach(c => { q += (c - e) * (c - e) / e; });
+    lastQ = q;
+    lastP = 1 - incgammaP((m - 1) / 2, q / 2);
+    qs.push(q);
+  }
+
+  function drawThrow() {
+    const cv = $('cv-bins-throw');
+    const e = n / m;
+    const top = counts ? Math.max(...counts, e) : e;
+    const ymax = top * 1.3;
+    const ch = chart(cv, 180, { xmin: 0, xmax: m, ymin: 0, ymax });
+    ch.clear();
+    ch.axes(null, niceTicks(0, ymax, 3));
+    if (counts) counts.forEach((c, i) => {
+      const x0 = ch.X(i + 0.08), x1 = ch.X(i + 0.92);
+      ch.ctx.fillStyle = cssv('--blue-soft');
+      ch.ctx.fillRect(x0, ch.Y(c), x1 - x0, ch.Y(0) - ch.Y(c));
+      ch.ctx.strokeStyle = cssv('--blue'); ch.ctx.lineWidth = 1.5;
+      ch.ctx.strokeRect(x0, ch.Y(c), x1 - x0, ch.Y(0) - ch.Y(c));
+    });
+    ch.ctx.strokeStyle = cssv('--green'); ch.ctx.lineWidth = 1.5;
+    ch.ctx.setLineDash([5, 4]);
+    ch.ctx.beginPath();
+    ch.ctx.moveTo(ch.X(0), ch.Y(e)); ch.ctx.lineTo(ch.X(m), ch.Y(e));
+    ch.ctx.stroke(); ch.ctx.setLineDash([]);
+    ch.label(`expected n/m = ${fmt(e, Number.isInteger(e) ? 0 : 1)}`,
+             m * 0.99, e + ymax * 0.04, cssv('--green'), 'right');
+    ch.label(counts
+      ? `one throw: ${n} balls in ${m} bins  →  Q = ${fmt(lastQ, 2)}`
+      : 'press “throw once” to drop the balls',
+      m * 0.01, ymax * 0.92, cssv('--muted'));
+  }
+
+  function drawQ() {
+    const cv = $('cv-bins-q');
+    const df = m - 1;
+    const xmax = Math.max(10, df + 5 * Math.sqrt(2 * df));
+    const f = x => chi2Pdf(x, df);
+    let ymax = 0;
+    for (let i = 1; i <= 200; i++)
+      ymax = Math.max(ymax, f(xmax * i / 200));
+    ymax = Math.min(ymax * 1.12, 3.2) || 1;
+    const ch = chart(cv, 240, { xmin: 0, xmax, ymin: 0, ymax });
+    ch.clear();
+    ch.axes(niceTicks(0, xmax, 6), niceTicks(0, ymax, 3));
+    if (qs.length) {
+      const BINS = 40, bw = xmax / BINS;
+      const hist = new Array(BINS).fill(0);
+      qs.forEach(v => {
+        const b = Math.floor(v / bw);
+        if (b >= 0 && b < BINS) hist[b]++;
+      });
+      ch.ctx.fillStyle = cssv('--blue-soft');
+      hist.forEach((c, i) => {
+        const d = Math.min(c / qs.length / bw, ymax);
+        if (!d) return;
+        ch.ctx.fillRect(ch.X(i * bw) + 1, ch.Y(d),
+                        ch.X(bw) - ch.X(0) - 2, ch.Y(0) - ch.Y(d));
+      });
+    }
+    const crit = chi2Crit95(df);
+    if (crit < xmax) {
+      ch.fillUnder(f, crit, xmax, cssv('--red-soft'));
+      ch.vline(crit, cssv('--red'), { dash: [4, 3] });
+      ch.label(`95% point ${fmt(crit, 2)}`, crit + xmax * 0.012, ymax * 0.55,
+               cssv('--red'));
+    }
+    ch.vline(df, cssv('--green'), { dash: [2, 3] });
+    ch.label(`mean = m−1 = ${df}`, df + xmax * 0.012, ymax * 0.72,
+             cssv('--green'));
+    ch.curve(f, cssv('--blue'));
+    ch.label(`χ² with m−1 = ${df} df`, xmax * 0.6, ymax * 0.88,
+             cssv('--blue'));
+    if (qs.length)
+      ch.label(`${qs.length} throws of Q`, xmax * 0.97, ymax * 0.78,
+               cssv('--muted'), 'right');
+  }
+
+  function read() {
+    let txt;
+    if (lastQ === null) {
+      txt = 'each throw is one draw of the discrete statistic Q';
+    } else {
+      txt = `last throw: Q = ${fmt(lastQ, 2)}, p = ${fmt(lastP, 3)}`;
+      if (qs.length > 1) {
+        const s = summarize(qs);
+        const df = m - 1;
+        const rej = qs.filter(q => q > chi2Crit95(df)).length / qs.length;
+        txt += `   ·   over ${qs.length} throws: mean Q = ${fmt(s.mean, 2)}`
+             + ` (df = ${df}), variance = ${fmt(s.sd * s.sd, 2)}`
+             + ` (2·df = ${2 * df}), ${fmt(100 * rej, 1)}% past the`
+             + ` 95% point (aim: 5%)`;
+      }
+    }
+    $('bin2-read').textContent = txt;
+  }
+
+  function drawAll() { drawThrow(); drawQ(); read(); }
+  function reset() { counts = null; qs = []; lastQ = null; lastP = null; }
+
+  $('bin2-throw').addEventListener('click', () => { throwOnce(); drawAll(); });
+  $('bin2-throw200').addEventListener('click', () => {
+    let left = 200;
+    const step = () => {
+      for (let i = 0; i < 10 && left > 0; i++, left--) throwOnce();
+      drawAll();
+      if (left > 0) requestAnimationFrame(step);
+    };
+    step();
+  });
+  $('bin2-reset').addEventListener('click', () => { reset(); drawAll(); });
+  slider('bin2-m', 0, v => { m = v; reset(); drawAll(); });
+  slider('bin2-n', 0, v => { n = v; reset(); drawAll(); });
+  onRedraw(drawAll);
 })();
 
 /* Student t vs normal, with tail readout */
