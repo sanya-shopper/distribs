@@ -962,6 +962,22 @@ it is the conjugate prior for Poisson and exponential rates, so posterior
 simulation of rate parameters is gamma sampling.  It also generates the
 next two distributions outright.
 
+\paragraph{One law, many hats.}
+Read $k$ as ``how much has accumulated'' and $\theta$ as the unit of
+accumulation, and the family's special cases stop being coincidences.
+Exponential$(\lambda)$ is Gamma$(1,1/\lambda)$: a single wait.  Erlang
+is Gamma at integer $k$: the $k$-th arrival.  $\chi^2_\nu$ is
+Gamma$(\nu/2,\,2)$: an accumulation of $\nu$ \emph{half}-waits, one per
+squared Gaussian dimension --- so the dartboard's $\chi^2_2$
+(\S\ref{sec:chisq}, Figure~\ref{fig:dartboard}) is Gamma$(1,2)$, an
+exponential in disguise, which is why a dart's squared miss distance is
+memoryless.  The Beta of \S\ref{sec:beta} is the \emph{share}
+$G_1/(G_1{+}G_2)$ of one gamma in a pair.  And as $k\to\infty$ the
+accumulated sum turns normal --- the central limit theorem operating
+\emph{inside} the family.  One law, three hats: waiting time in
+queueing, accumulated evidence about a rate in Bayesian inference,
+accumulated squared noise in sampling theory.
+
 Summing exponentials only works for integer $k$, so the library uses the
 one algorithm where we accept a little cleverness for a lot of practical
 value: the \citet{marsaglia2000gamma} method, the standard choice of

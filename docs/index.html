@@ -615,6 +615,23 @@ p.hist b { color: var(--ink); }
     the conjugate prior for Poisson and exponential rates — and the raw
     material for beta, chi-squared, <em>t</em> and <em>F</em> below.
   </p>
+  <p>
+    It pays to read Gamma(<em>k</em>, θ) as the family's central
+    interchange rather than one more curve: <em>k</em> counts <em>how much
+    has accumulated</em>, θ sets the unit (mean <em>k</em>θ, variance
+    <em>k</em>θ²).  The special cases then stop being coincidences: the
+    <a href="#uniform-bits">exponential</a> is Gamma(1, 1/λ) — a single
+    wait; Erlang is Gamma at integer <em>k</em> — the <em>k</em>-th
+    <a href="#poisson">Poisson</a> arrival; <a href="#chisq">χ²ₖ</a> is
+    Gamma(<em>k</em>/2, 2) — <em>k</em> <em>half</em>-waits, one per
+    squared Gaussian dimension, so χ²₂ is Gamma(1, 2), an exponential in
+    disguise (which is why a dart's squared miss distance is memoryless);
+    <a href="#beta">Beta</a> is the share G₁/(G₁+G₂) of one gamma in a
+    pair; and as <em>k</em> → ∞ the accumulated sum turns
+    <a href="#clt">normal</a> — the CLT operating inside the family.  One
+    law, three hats: waiting time (queueing), accumulated evidence about a
+    rate (the conjugate prior), and accumulated squared noise (χ²).
+  </p>
   <p class="hist"><b>History:</b> Euler's function (1729) became a
     statistical family in Karl Pearson's skew-curve system (1890s, Type
     III); the integer-shape case is Erlang's telephone-holding-time law
@@ -707,20 +724,29 @@ p.hist b { color: var(--ink); }
     survey.
   </p>
   <p>
-    Like the binomial — a discrete count whose continuous limit is the
-    normal — χ² works both sides of the discrete/continuous divide.
-    Pearson's Q is built from integer counts and lives on a lattice; for
+    Like the <a href="#binomial">binomial</a> — a discrete count whose
+    continuous limit is the <a href="#normal">normal</a> — χ² works both
+    sides of the discrete/continuous divide.
+    <a href="https://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test">Pearson's
+    Q</a> is built from integer counts and lives on a lattice; for
     m&nbsp;=&nbsp;2 it is exactly the squared standardized binomial, so
-    Q&nbsp;→&nbsp;χ²₁ <em>is</em> de Moivre–Laplace squared: χ² is to the
-    multinomial what the normal is to the binomial.  And the traffic flows
+    Q&nbsp;→&nbsp;χ²₁ <em>is</em>
+    <a href="https://en.wikipedia.org/wiki/De_Moivre%E2%80%93Laplace_theorem">de
+    Moivre–Laplace</a> squared: χ² is to the
+    <a href="https://en.wikipedia.org/wiki/Multinomial_distribution">multinomial</a>
+    what the normal is to the binomial.  And the traffic flows
     back — every even-df tail is a <em>finite Poisson sum</em>,
     1&nbsp;−&nbsp;F<sub>χ²<sub>2k</sub></sub>(x) =
-    Pr[Poisson(x/2)&nbsp;≤&nbsp;k−1], because χ²<sub>2k</sub> is the
-    waiting time to the k-th Poisson event.  The library uses the identity
-    both ways: <code>ps_poisson_cdf</code> evaluates the discrete CDF with
-    one call to the continuous incomplete gamma, and the driver watches
-    discrete Q settle onto the continuous curve and prints even-df tails
-    beside the Poisson sums they equal.
+    Pr[Poisson(x/2)&nbsp;≤&nbsp;k−1], because χ²<sub>2k</sub> — the
+    <a href="#gamma">Gamma(k, 2)</a> — is the waiting time to the k-th
+    event of a <a href="#poisson">Poisson</a> process.  The library uses
+    the identity both ways:
+    <a data-code="src/dist.c"><code>ps_poisson_cdf</code></a> evaluates
+    the discrete CDF with one call to the continuous
+    <a data-code="src/special.c">incomplete gamma</a>, and
+    <a data-code="app/simulate.c">the driver</a> watches discrete Q
+    settle onto the continuous curve and prints even-df tails beside the
+    Poisson sums they equal.
   </p>
   <div id="bins">
   <p>
