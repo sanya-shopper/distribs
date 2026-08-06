@@ -104,7 +104,7 @@
 % Deliberately a fixed date, not \today: the built PDF is committed and
 % checked for staleness against its sources (see Makefile: check-sync),
 % so a date that changed on every rebuild would report false drift.
-\date{Last updated 2026-08-04}
+\date{Last updated 2026-08-06}
 
 \begin{document}
 \maketitle
@@ -686,8 +686,118 @@ counts ever since: insurance claims, species abundance in quadrats,
 crime counts, and today the per-gene read counts of RNA-seq, whose
 standard analysis tools are negative-binomial regressions at scale.
 
+\paragraph{Worked example: the Bitcoin double-spend race.}\label{par:doublespend}
+The two hats meet on one head in the security argument of the Bitcoin
+white paper \citep{nakamoto2008}.  A merchant waits for $z$
+confirmations --- $z$ further blocks on the honest chain --- before
+releasing goods; an attacker holding a fraction $q$ of the network's
+hash power mines a competing chain in secret, hoping to overtake it and
+undo the payment.  Blocks are found by a Poisson process
+(\S\ref{sec:poisson}), so by thinning each block belongs to the
+attacker with probability $q$ and to the honest network with
+probability $p=1-q$, independently.  Then the number $K$ of blocks the
+attacker finds while the honest chain advances by $z$ is
+\emph{exactly} NB$(z,p)$: attacker blocks are the failures before the
+$z$-th honest success.  Take the other route and the other hat
+appears: the honest network needs an Erlang --- Gamma$(z,\,1/p\lambda)$,
+\S\ref{sec:gamma} --- amount of time to find $z$ blocks, and given that
+time the attacker's count is Poisson, so $K$ is a gamma-mixed Poisson.
+Same law, both derivations.
+
+The white paper takes a third route: it replaces that random elapsed
+time by its mean, and so arrives at a Poisson count with
+$\lambda=zq/p$.  The mean is right --- $\E K=zq/p$ --- but the
+dispersion is not.  NB$(z,p)$ has variance $zq/p^2$, which is $1/p$
+times its mean, so the Poisson understates the variance by that factor:
+$11\%$ at $q=0.1$, $67\%$ at $q=0.4$.  The slip is not in any
+cryptographic assumption; it is the familiar one of substituting a mean
+into a non-linear function, and it happens to understate exactly the
+tail the merchant is buying protection against.  \citet{rosenfeld2014} corrected it --- his
+paper declines the assumption and models the count ``more accurately as
+a negative binomial variable'' --- and \citet{grunspan2018} give the
+exact success probability in closed form --- one more incomplete-beta reduction
+(\S\ref{sec:special}):
+\[
+P(z)=I_{4pq}\!\left(z,\tfrac12\right).
+\]
+So the true risk shrinks by a factor $4pq$ for each further
+confirmation, while the Poisson version shrinks by $e^{-c}$ with
+$c=q/p-\ln(q/p)-1$, the large-deviation rate of a Poisson count ---
+strictly faster: $0.27$ per confirmation against $0.36$ at $q=0.1$.
+Two different decay constants is the
+signature of two different models, and the gap compounds with every
+confirmation the merchant waits: at $q=0.1$ and $z=10$ the real risk is
+$7.9\times10^{-6}$ against the $1.2\times10^{-6}$ assumed, a factor of
+$6$, rising to a factor of $84$ by $z=20$ (Figure~\ref{fig:doublespend}).
+
+This example is also a small lesson in why the library keeps the
+incomplete beta of \S\ref{sec:special} rather than summing series.  The
+textbook route to $P(z)$ --- sum $\Pr[K=k]$ times the gambler's-ruin
+catch-up probability over $k<z$, then subtract from $1$ --- is a
+subtraction of two quantities that agree to more and more digits as $z$
+grows.  By $z=40$ at $q=0.1$ the true answer, $2.0\times10^{-19}$, is
+far below the rounding error of that final subtraction, and in double
+precision the sum returns noise: this build reports $5.9\times10^{-15}$
+there, and a negative probability at $z=35$.  The closed form
+\texttt{ps\_incbeta(4pq,\,z,\,0.5)} returns the same $z=40$ figure to
+fifteen digits.  \texttt{tests/test\_probsim.c} checks the two forms
+against each other over the range where both are trustworthy, pins the
+breakdown, and checks that the Poisson version understates the risk.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[psaxis, width=12.2cm, height=6.4cm,
+    ymode=log, xmin=0.4, xmax=21.6, ymin=1e-12, ymax=3,
+    xtick={2,4,6,8,10,12,14,16,18,20},
+    xlabel={confirmations $z$ the merchant waits for},
+    ylabel={$\Pr[\text{attacker eventually catches up}]$},
+    legend style={draw=none, fill=white, font=\scriptsize\sffamily,
+                  at={(0.015,0.03)}, anchor=south west, cells={anchor=west}}]
+  \addplot[sBlue, mark=*, mark size=1.1pt] coordinates {
+    (1,0.2) (2,0.056) (3,0.01712) (4,0.005456) (5,0.00178184)
+    (6,0.000591412) (7,0.000198571) (8,6.72498e-05) (9,2.29289e-05)
+    (10,7.85976e-06) (11,2.70613e-06) (12,9.35154e-07) (13,3.24167e-07)
+    (14,1.12671e-07) (15,3.92523e-08) (16,1.37024e-08) (17,4.79189e-09)
+    (18,1.67846e-09) (19,5.88752e-10) (20,2.06782e-10)};
+  \addlegendentry{$q=0.1$, negative binomial (exact)}
+  \addplot[sBlue, densely dashed, mark=o, mark size=1.1pt] coordinates {
+    (1,0.204587) (2,0.0509779) (3,0.0131722) (4,0.00345524)
+    (5,0.000913682) (6,0.000242803) (7,6.47353e-05) (8,1.72998e-05)
+    (9,4.63116e-06) (10,1.2414e-06) (11,3.33108e-07) (12,8.94584e-08)
+    (13,2.4041e-08) (14,6.46445e-09) (15,1.73907e-09) (16,4.68037e-10)
+    (17,1.26007e-10) (18,3.39346e-11) (19,9.14102e-12) (20,2.46314e-12)};
+  \addlegendentry{$q=0.1$, Poisson (mean substituted)}
+  \addplot[cRed, mark=*, mark size=1.1pt] coordinates {
+    (1,0.6) (2,0.432) (3,0.32616) (4,0.252072) (5,0.197617) (6,0.15645)
+    (7,0.12475) (8,0.100025) (9,0.0805539) (10,0.0651067) (11,0.0527799)
+    (12,0.042896) (13,0.0349395) (14,0.0285131) (15,0.0233077)
+    (16,0.0190809) (17,0.0156413) (18,0.0128371) (19,0.010547)
+    (20,0.00867386)};
+  \addlegendentry{$q=0.3$, negative binomial (exact)}
+  \addplot[cRed, densely dashed, mark=o, mark size=1.1pt] coordinates {
+    (1,0.627749) (2,0.445717) (3,0.324584) (4,0.239127) (5,0.177352)
+    (6,0.132111) (7,0.0987125) (8,0.0739244) (9,0.0554572) (10,0.0416605)
+    (11,0.0313309) (12,0.023584) (13,0.0177662) (14,0.0133923)
+    (15,0.0101008) (16,0.0076219) (17,0.0057538) (18,0.00434517)
+    (19,0.00328247) (20,0.0024804)};
+  \addlegendentry{$q=0.3$, Poisson (mean substituted)}
+\end{axis}
+\end{tikzpicture}
+\caption{The cost of the wrong count law, on a log scale.  Solid curves
+are the exact negative-binomial risk $I_{4pq}(z,\frac12)$; dashed
+curves of the same colour are the Poisson approximation obtained by
+substituting the mean elapsed time, at the same attacker hash-power
+share $q$.  The two agree for the first confirmation or two --- which
+is why the substitution survived scrutiny --- and then separate
+geometrically, because they decay at different rates.  Waiting longer
+buys less safety than the Poisson calculation promises.\
+\webfig{negbinomial}}
+\label{fig:doublespend}
+\end{figure}
+
 \srcref{src/dist.c: ps\_negative\_binomial(), ps\_negative\_binomial\_pmf(),
-        ps\_negative\_binomial\_cdf()}
+        ps\_negative\_binomial\_cdf(); src/special.c: ps\_incbeta()}
 
 \subsection{Beta-binomial}\label{sec:betabin}
 

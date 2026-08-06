@@ -317,6 +317,106 @@ static void test_overdispersion(void)
     CHECK(!ps_tarone_z(k_all, n_all, 0).ok);
 }
 
+/* ---- 5c. The double-spend race: the wrong count law (paper §3.5) ---- *
+ *
+ * A merchant waits for z confirmations; an attacker with hash-power
+ * share q mines a competing chain.  The attacker's block count while
+ * the honest chain advances by z is NegBinomial(z, p), p = 1-q, and the
+ * probability of eventually catching up from a deficit of z-k blocks is
+ * the gambler's-ruin factor (q/p)^(z-k).  Nakamoto (2008) §11 replaces
+ * the random elapsed time by its mean and so uses a Poisson with the
+ * same mean but 1/p times too little variance; Grunspan & Perez-Marco
+ * (2018) give the exact answer in closed form as an incomplete beta.
+ * These three routes are the functions below.
+ */
+static double ds_negbin_sum(long z, double q)
+{
+    const double p = 1.0 - q, ratio = q / p;
+    double caught = 0.0;
+    for (long k = 0; k < z; k++)
+        caught += ps_negative_binomial_pmf(k, z, p)
+                * (1.0 - pow(ratio, (double)(z - k)));
+    return 1.0 - caught;
+}
+
+static double ds_poisson_sum(long z, double q)
+{
+    const double p = 1.0 - q, ratio = q / p, lambda = (double)z * ratio;
+    double caught = 0.0;
+    for (long k = 0; k < z; k++)
+        caught += ps_poisson_pmf(k, lambda)
+                * (1.0 - pow(ratio, (double)(z - k)));
+    return 1.0 - caught;
+}
+
+/* P(z) = I_{4pq}(z, 1/2) — Grunspan & Perez-Marco, Theorem 1. */
+static double ds_incbeta(long z, double q)
+{
+    const double p = 1.0 - q;
+    return ps_incbeta(4.0 * p * q, (double)z, 0.5);
+}
+
+static void test_double_spend(void)
+{
+    const double qs[] = { 0.1, 0.3, 0.4 };
+
+    for (size_t i = 0; i < sizeof qs / sizeof qs[0]; i++) {
+        const double q = qs[i];
+
+        /* One confirmation: I_{4pq}(1, 1/2) = 1 - sqrt(1-4pq) = 2q. */
+        CHECK_CLOSE(ds_incbeta(1, q), 2.0 * q, 1e-12);
+
+        /* The series and the closed form must agree wherever the series
+         * is still trustworthy — that is, while P(z) stays well above
+         * the rounding error of the final 1 - sum. */
+        for (long z = 1; z <= 12; z++)
+            CHECK_CLOSE(ds_negbin_sum(z, q), ds_incbeta(z, q), 1e-12);
+    }
+
+    /* Hand-checkable fixtures at q = 0.1: P(1) = 0.2, P(2) = 0.056. */
+    CHECK_CLOSE(ds_incbeta(2, 0.1), 0.056, 1e-12);
+    CHECK_CLOSE(ds_incbeta(3, 0.1), 0.01712, 1e-12);
+    CHECK_CLOSE(ds_incbeta(6, 0.1), 0.00059141216, 1e-12);
+    CHECK_CLOSE(ds_incbeta(6, 0.3), 0.15644958192, 1e-11);
+
+    /* The point of the example: the Poisson approximation understates
+     * the risk, and does so by a factor that grows with z because the
+     * two laws decay at different rates (4pq = 0.36 against 0.27). */
+    for (long z = 3; z <= 20; z++)
+        CHECK(ds_incbeta(z, 0.1) > ds_poisson_sum(z, 0.1));
+    CHECK(ds_incbeta(10, 0.1) / ds_poisson_sum(10, 0.1) > 6.0);
+    CHECK(ds_incbeta(20, 0.1) / ds_poisson_sum(20, 0.1) > 80.0);
+    /* Successive ratios approach the two decay bases. */
+    CHECK_CLOSE(ds_incbeta(20, 0.1) / ds_incbeta(19, 0.1), 0.36, 0.02);
+    CHECK_CLOSE(ds_poisson_sum(20, 0.1) / ds_poisson_sum(19, 0.1),
+                0.27, 0.02);
+
+    /* Why the library carries ps_incbeta() rather than summing series:
+     * by z = 40 the true answer is below the rounding error of 1 - sum,
+     * so the series returns noise while the closed form is exact. */
+    const double far_exact = ds_incbeta(40, 0.1);
+    CHECK_CLOSE(far_exact, 1.97295385942595e-19, 1e-25);
+    CHECK(fabs(ds_negbin_sum(40, 0.1) - far_exact) > 1e3 * far_exact);
+
+    /* And the moment identity that drives all of it: Var K = (1/p) E K,
+     * against the Poisson's Var = E.  Six confirmations, q = 0.3. */
+    ps_rng rng;
+    ps_rng_seed(&rng, 20260806);
+    enum { N = 200000, Z = 6 };
+    const double q = 0.3, p = 1.0 - q;
+    double s = 0.0, ss = 0.0;
+    for (int i = 0; i < N; i++) {
+        double k = (double)ps_negative_binomial(&rng, Z, p);
+        s += k;
+        ss += k * k;
+    }
+    const double mean = s / N;
+    const double var  = (ss - N * mean * mean) / (N - 1);
+    CHECK_CLOSE(mean, Z * q / p, 0.02);
+    CHECK_CLOSE(var, Z * q / (p * p), 0.05);
+    CHECK_CLOSE(var / mean, 1.0 / p, 0.02);
+}
+
 /* ---- 6. Sample moments within 5 standard errors of theory (paper §6.3) --- */
 
 /* Draw n samples with `draw`, then require the sample mean to be within
@@ -425,6 +525,7 @@ int main(void)
     test_special_identities();
     test_t_tests();
     test_overdispersion();
+    test_double_spend();
     test_sampler_moments();
     test_type_one_error_rate();
 

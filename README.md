@@ -1,6 +1,6 @@
 # probsim — classical probability distributions in C99
 
-*Last updated 2026-08-04.*
+*Last updated 2026-08-06.*
 
 A small, portable C99 library and driver application that simulates the major
 classical probability distributions, together with a typeset companion paper
@@ -98,6 +98,17 @@ annex" (paper §3.5, §4.9–§4.10): less common in introductory courses, but
 exactly the laws that govern an ideal cryptographic hash — multi-collision
 search cost (negative binomial), the birthday bound (Rayleigh), and
 worst-case bucket loads and longest runs (Gumbel).
+
+The negative binomial also carries a worked example of what using the
+wrong count law costs (paper §3.5): the attacker's block count in a
+Bitcoin double-spend race is exactly NB(*z*, *p*), and the white paper's
+§11 substitutes the mean elapsed time to get a Poisson with the right
+mean but 1/*p* times too little variance — understating the merchant's
+risk by a factor that grows with every confirmation waited for (6× at ten
+confirmations against a 10% attacker, 84× at twenty).  The exact answer is
+one more incomplete-beta call, *I*<sub>4pq</sub>(*z*, ½), which
+`ps_incbeta()` evaluates to full precision where the textbook series has
+cancelled itself into noise.
 
 ## Sibling project: randtests
 

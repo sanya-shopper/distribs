@@ -471,6 +471,55 @@ p.hist b { color: var(--ink); }
     </div>
   </div>
 
+  <h3 id="doublespend">The Bitcoin double-spend race — the two hats on one head</h3>
+  <p>
+    A merchant waits for <em>z</em> confirmations — <em>z</em> further blocks
+    on the honest chain — before releasing the goods.  An attacker holding a
+    fraction <em>q</em> of the network's hash power mines a competing chain in
+    secret, hoping to overtake it and undo the payment.  Blocks are found by a
+    <a href="#poisson">Poisson process</a>, so each new block is the
+    attacker's with probability <em>q</em> and honest with probability
+    <em>p</em>&nbsp;=&nbsp;1−<em>q</em>, independently.  The number of blocks
+    the attacker finds while the honest chain advances by <em>z</em> is then
+    exactly <b>NB(<em>z</em>, <em>p</em>)</b>: attacker blocks are the
+    failures before the <em>z</em>-th honest success.  Take the other route
+    and the other hat appears — the honest network needs a
+    <a href="#gamma">gamma</a> (Erlang) amount of time to find <em>z</em>
+    blocks, and given that time the attacker's count is Poisson, so the count
+    is a gamma-mixed Poisson.  Same law, both derivations.
+  </p>
+  <p>
+    The <a href="https://bitcoin.org/bitcoin.pdf">Bitcoin white paper</a>
+    (2008) takes a third route in its §11: it replaces that random elapsed
+    time by its <em>mean</em>, and so arrives at a Poisson count with
+    λ&nbsp;=&nbsp;<em>zq</em>/<em>p</em>.  The mean is right; the dispersion
+    is not.  The negative binomial's variance is
+    <em>zq</em>/<em>p</em>²&nbsp;=&nbsp;(1/<em>p</em>)&nbsp;×&nbsp;mean, so
+    the Poisson understates it by that factor — 11% at
+    <em>q</em>&nbsp;=&nbsp;0.1, 67% at <em>q</em>&nbsp;=&nbsp;0.4 — and
+    understating the spread understates exactly the tail the merchant is
+    buying protection against.  Rosenfeld (2014) corrected it — declining
+    the assumption and modelling the count “more accurately as a negative
+    binomial variable”;
+    Grunspan &amp; Pérez-Marco (2018) give the exact risk in closed form,
+    and it is one more incomplete-beta reduction:
+    <b>P(<em>z</em>)&nbsp;=&nbsp;I<sub>4pq</sub>(<em>z</em>,&nbsp;½)</b>, the
+    same <code data-code="src/special.c">ps_incbeta()</code> that serves the
+    <em>t</em> and F tables.  The true risk shrinks by a factor
+    4<em>pq</em> for each further confirmation — 0.36 at
+    <em>q</em>&nbsp;=&nbsp;0.1 — while the Poisson version shrinks by 0.27,
+    strictly faster.  Two decay constants is the signature of two different
+    models.  Drag <em>q</em> and <em>z</em> and watch the gap open.
+  </p>
+  <div class="viz"><canvas id="cv-ds" height="250"></canvas></div>
+  <div class="controls">
+    <label>attacker share q <input type="range" id="ds-q" min="0.02" max="0.45"
+      step="0.01" value="0.10"> <span class="val" id="ds-q-v">0.10</span></label>
+    <label>confirmations z <input type="range" id="ds-z" min="1" max="30"
+      step="1" value="6"> <span class="val" id="ds-z-v">6</span></label>
+  </div>
+  <p class="readout" id="ds-read"></p>
+
   <h3 id="betabinomial">Beta-binomial(n, a, b) — first pick a coin, then flip it</h3>
   <p>
     Every distribution above flips <em>one</em> coin.  The beta-binomial asks
@@ -985,7 +1034,7 @@ p.hist b { color: var(--ink); }
       <tr><td><a href="#chisq">Chi-squared</a></td><td>summed squared noise</td><td>variance CIs, GoF, likelihood ratios</td></tr>
       <tr><td><a href="#studentt">Student <em>t</em></a></td><td>normalized small samples</td><td><em>t</em>-tests, robust models</td></tr>
       <tr><td><a href="#fdist"><em>F</em></a></td><td>variance ratios</td><td>ANOVA, regression <em>F</em>-tests</td></tr>
-      <tr><td><a href="#negbinomial">Neg. binomial</a></td><td>failures before <em>r</em>-th success</td><td>overdispersed counts; multi-collision cost</td></tr>
+      <tr><td><a href="#negbinomial">Neg. binomial</a></td><td>failures before <em>r</em>-th success</td><td>overdispersed counts; multi-collision cost; <a href="#doublespend">double-spend risk</a></td></tr>
       <tr><td><a href="#rayleigh">Rayleigh</a></td><td>2-D Gaussian lengths</td><td>birthday bound; fading channels</td></tr>
       <tr><td><a href="#gumbel">Gumbel</a></td><td>maxima of many draws</td><td>worst-case loads; extremes; NIST runs test</td></tr>
     </tbody>
@@ -1094,7 +1143,7 @@ p.hist b { color: var(--ink); }
     <a href="https://sanya-shopper.github.io/randtests/">randtests</a>,
     a survey of the statistical test suites (Diehard, NIST SP 800-22,
     TestU01, PractRand, SMHasher) that put these distributions to work.
-    Last updated 2026-08-04.
+    Last updated 2026-08-06.
   </div>
 </footer>
 
@@ -1928,6 +1977,114 @@ pmfPanel('cv-negbin', 'nb-read', {
     slider('nb-p', 2, v => set({ ...get(), p: v }));
   },
 });
+
+/* The Bitcoin double-spend race (paper §3.5): the exact negative-binomial
+ * risk against the Poisson one the white paper gets by substituting the
+ * mean elapsed time.  Both are evaluated in cancellation-free form — the
+ * textbook "1 − Σ" route returns noise once the answer drops below the
+ * rounding error of that subtraction, which happens around z = 30. */
+(function doubleSpend() {
+  let q = 0.10, z = 6;
+  const ZMAX = 30;
+
+  /* Grunspan & Pérez-Marco (2018), Theorem 1. */
+  const exactRisk = (n, qq) => incbeta(4 * qq * (1 - qq), n, 0.5);
+
+  /* Nakamoto §11, but summed so every term is positive:
+   * Pr[K ≥ z] + Σ_{k<z} Pois(k; λ) (q/p)^(z−k). */
+  function poissonRisk(n, qq) {
+    const p = 1 - qq, r = qq / p, lam = n * r;
+    let s = incgammaP(n, lam);
+    for (let k = 0; k < n; k++) s += poisPmf(k, lam) * Math.pow(r, n - k);
+    return Math.min(1, s);
+  }
+
+  const oneIn = v => v <= 0 ? '—'
+    : v > 0.02 ? `${fmt(100 * v, 1)}%`
+    : v > 1e-9 ? `1 in ${Math.round(1 / v).toLocaleString('en-US')}`
+    : `${v.toExponential(1)}`;
+
+  function draw() {
+    const zs = [];
+    for (let i = 1; i <= ZMAX; i++) zs.push(i);
+    const ex = zs.map(n => exactRisk(n, q));
+    const po = zs.map(n => poissonRisk(n, q));
+    const floor = Math.max(1e-300, Math.min(ex[ZMAX - 1], po[ZMAX - 1]));
+    const lo = Math.max(-60, Math.floor(Math.log10(floor)));
+    const L = v => Math.max(lo, Math.log10(Math.max(v, 1e-300)));
+
+    const ch = chart($('cv-ds'), 250,
+      { xmin: 0.4, xmax: ZMAX + 0.6, ymin: lo, ymax: 0.35,
+        margin: { l: 52, r: 12, t: 12, b: 40 } });
+    ch.clear();
+
+    /* Decade gridlines, labelled 10^-k. */
+    const step = Math.max(1, Math.ceil(-lo / 6));
+    const decades = [];
+    for (let d = 0; d >= lo; d -= step) decades.push(d);
+    ch.ctx.strokeStyle = cssv('--grid'); ch.ctx.lineWidth = 1;
+    decades.forEach(d => {
+      ch.ctx.beginPath();
+      ch.ctx.moveTo(ch.X(0.4), ch.Y(d)); ch.ctx.lineTo(ch.X(ZMAX + 0.6), ch.Y(d));
+      ch.ctx.stroke();
+    });
+    ch.axes([5, 10, 15, 20, 25, 30], null);
+    ch.ctx.fillStyle = cssv('--muted');
+    ch.ctx.font = '11px system-ui, sans-serif';
+    ch.ctx.textAlign = 'right'; ch.ctx.textBaseline = 'middle';
+    decades.forEach(d => ch.ctx.fillText(
+      d === 0 ? '1' : `10${String(d).replace('-', '⁻')
+        .replace(/[0-9]/g, c => '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c])}`,
+      ch.m.l - 5, ch.Y(d)));
+
+    const line = (vals, color, dash) => {
+      ch.ctx.strokeStyle = color; ch.ctx.lineWidth = 2;
+      ch.ctx.setLineDash(dash);
+      ch.ctx.beginPath();
+      vals.forEach((v, i) => i ? ch.ctx.lineTo(ch.X(i + 1), ch.Y(L(v)))
+                               : ch.ctx.moveTo(ch.X(1), ch.Y(L(v))));
+      ch.ctx.stroke(); ch.ctx.setLineDash([]);
+    };
+    line(po, cssv('--red'), [6, 4]);
+    line(ex, cssv('--blue'), []);
+
+    /* The chosen z: a rule and a dot on each curve. */
+    ch.vline(z, cssv('--muted'), { dash: [3, 3], toY: 0.35 });
+    [[ex[z - 1], '--blue'], [po[z - 1], '--red']].forEach(([v, c]) => {
+      ch.ctx.fillStyle = cssv(c);
+      ch.ctx.beginPath(); ch.ctx.arc(ch.X(z), ch.Y(L(v)), 4, 0, 7);
+      ch.ctx.fill();
+    });
+
+    /* Legend low and to the left: the corner both regimes leave empty. */
+    const span = 0.35 - lo;
+    ch.label('negative binomial (the truth)', 1.2, lo + 0.15 * span,
+             cssv('--blue'));
+    ch.label('Poisson (mean substituted)', 1.2, lo + 0.07 * span,
+             cssv('--red'));
+    ch.ctx.fillStyle = cssv('--muted');
+    ch.ctx.font = '11px system-ui, sans-serif';
+    ch.ctx.textAlign = 'center'; ch.ctx.textBaseline = 'top';
+    ch.ctx.fillText('confirmations z the merchant waits for',
+                    (ch.m.l + ch.w - ch.m.r) / 2, ch.h - 13);
+
+    const e = ex[z - 1], p0 = po[z - 1];
+    const ratio = r => r >= 100 ? Math.round(r).toLocaleString('en-US')
+                     : r >= 10  ? fmt(r, 1) : fmt(r, 2);
+    $('ds-read').textContent =
+      `q = ${fmt(q, 2)}, z = ${z}: the real risk of losing the payment is ` +
+      `${oneIn(e)}, while the white paper's Poisson says ${oneIn(p0)} — ` +
+      (e > p0 ? `understated by ${ratio(e / p0)}×.`
+              : `overstated by ${ratio(p0 / e)}× (the two agree at the ` +
+                `first confirmation or two, which is why the substitution ` +
+                `survived scrutiny).`) +
+      `  Variance inflation 1/p = ${fmt(1 / (1 - q), 2)}×.`;
+  }
+
+  slider('ds-q', 2, v => { q = v; draw(); });
+  slider('ds-z', 0, v => { z = v; draw(); });
+  onRedraw(draw);
+})();
 
 /* Bernoulli running-proportion demo. */
 (function bernoulli() {

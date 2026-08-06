@@ -1,6 +1,6 @@
 # refs/ — local copies of the bibliography
 
-*Last updated 2026-08-02.*
+*Last updated 2026-08-06.*
 
 This directory holds local PDF copies of the open-access references cited in
 `paper/references.bib`.  Populate it with:
@@ -26,6 +26,9 @@ canonical sources keeps the repo small and the provenance clean.)
 | `bayes-1763.pdf`                   | Bayes 1763 (`bayes1763`)       | open access, Royal Society |
 | `wilks-1938.pdf`                   | Wilks 1938 (`wilks1938`)       | open access, Project Euclid |
 | `nist-sp800-22r1a.pdf`             | NIST SP 800-22 (`nist2010`)    | open access, NIST |
+| `nakamoto-bitcoin-2008.pdf`        | Nakamoto 2008 (`nakamoto2008`) | freely published, bitcoin.org |
+| `rosenfeld-2014-doublespend.pdf`   | Rosenfeld 2014 (`rosenfeld2014`) | open access, arXiv:1402.2009 |
+| `grunspan-perez-marco-2018.pdf`    | Grunspan & Pérez-Marco 2018 (`grunspan2018`) | open access, arXiv:1702.02867 |
 | —                                  | L'Ecuyer & Simard 2007 (`lecuyer2007testu01`) | paywalled (ACM TOMS); cited by DOI |
 | —                                  | Vigna 2016 (`vigna2016xorshift`) | paywalled (ACM TOMS); preprint arXiv:1402.6246 |
 | —                                  | PractRand (`dotyhumphrey_practrand`) | software; cited by URL |

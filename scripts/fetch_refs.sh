@@ -65,4 +65,15 @@ fetch wilks-1938.pdf \
 fetch nist-sp800-22r1a.pdf \
     "https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-22r1a.pdf"
 
+# The double-spend example of paper §3.5: the Bitcoin white paper and the
+# two corrections of its §11 count law.  All three are freely published.
+fetch nakamoto-bitcoin-2008.pdf \
+    "https://bitcoin.org/bitcoin.pdf"
+
+fetch rosenfeld-2014-doublespend.pdf \
+    "https://arxiv.org/pdf/1402.2009"
+
+fetch grunspan-perez-marco-2018.pdf \
+    "https://arxiv.org/pdf/1702.02867"
+
 echo "done."
