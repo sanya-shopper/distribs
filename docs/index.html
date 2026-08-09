@@ -288,6 +288,18 @@ p.hist b { color: var(--ink); }
     the clock of every Poisson process, and the constant-hazard baseline of
     reliability and survival analysis.
   </p>
+  <p class="hist">
+    <b>In the field:</b> under a true null hypothesis a p-value is itself
+    Uniform(0,1) — the <a href="#ttest">t-test playground</a> below shows
+    the flat histogram live.  The sibling experiment <em>shastats</em>
+    (paper §4.1) used that as an instrument: its 256 per-prefix
+    goodness-of-fit p-values, tested against the flat line, came back
+    uniform (Kolmogorov–Smirnov p&nbsp;=&nbsp;0.62), and its scariest
+    single reading — a prefix at p&nbsp;=&nbsp;0.0015 — deflates once you
+    recall the <em>minimum</em> of 256 uniforms is
+    <a href="#beta">Beta(1,&nbsp;256)</a>: Pr[min&nbsp;≤&nbsp;0.0015]&nbsp;≈&nbsp;0.32.
+    An ordinary bottom of the class, not a finding.
+  </p>
   <div class="viz"><canvas id="cv-inverse" height="360"></canvas></div>
   <div class="controls">
     <button id="inv-play">play</button>
@@ -394,6 +406,15 @@ p.hist b { color: var(--ink); }
         letters on splitting interrupted stakes; de Moivre (1733) found
         the bell curve hiding in it — the first CLT.  Mendel's 3:1 pea
         ratios and Bell Labs' acceptance sampling are binomial counts.</p>
+      <p class="hist"><b>In the field:</b> the sibling experiment
+        <em>shastats</em> (paper §3.2; a local repo, not yet online) used
+        Binomial(256,&nbsp;½) as the yardstick for SHA-256's
+        <em>avalanche</em>: flip one input bit and the count of flipped
+        output bits should have mean 128, spread 8.  Over 419 million
+        exhaustive single-bit-flip pairs: mean 128.0000, spread 8.0003.
+        Each of the 6,400 (input&nbsp;bit, output&nbsp;bit) cells is an
+        exact binomial coin — the worst one, +3.9σ, is priced under the
+        <a href="#gumbel">Gumbel</a>.</p>
       <div class="viz"><canvas id="cv-binom" height="230"></canvas></div>
       <div class="controls">
         <label>n <input type="range" id="bin-n" min="1" max="40" step="1" value="20">
@@ -423,6 +444,13 @@ p.hist b { color: var(--ink); }
         six?" is as old as dice.  The only memoryless discrete law — the
         gambler's fallacy is the refusal to believe it.  Today: network
         retransmissions, cycles-to-conception, first-defect inspection.</p>
+      <p class="hist"><b>In the field:</b> a hash digest's count of
+        <em>leading zero bits</em> — the quantity Bitcoin's
+        <a href="#doublespend">proof of work</a> thresholds — is tails
+        before the first head: Geometric(½), Pr[N=k]&nbsp;=&nbsp;2<sup>−(k+1)</sup>.
+        The sibling experiment <em>shastats</em> (paper §3.3) tried the
+        law on 2³³ SHA-256 digests with no parameter fitted: fit
+        p&nbsp;=&nbsp;0.30, mean 1.000011 against the theoretical 1.</p>
       <div class="viz"><canvas id="cv-geom" height="230"></canvas></div>
       <div class="controls">
         <label>p <input type="range" id="geo-p" min="0.05" max="0.9" step="0.01"
@@ -586,6 +614,17 @@ p.hist b { color: var(--ink); }
     named and fitted it.  Its two natural homes are biology, where each
     litter, couple or plot has its own propensity, and manufacturing,
     where each production lot has its own defect rate.</p>
+  <p class="hist"><b>In the field:</b> the sibling experiment
+    <em>shastats</em> (paper §5.4) ran this audit on 256 populations of
+    SHA-256 digests: a real prefix dependence would be exactly the
+    each-cluster-draws-its-own-<em>p</em> signature above, dispersion
+    index &gt; 1.  Measured: 1.00 within noise.  Its one flagged reading
+    pointed the <em>other</em> way — one bin of the double hash SHA256d
+    varied <em>less</em> across prefixes than chance allows (index 0.756,
+    p&nbsp;=&nbsp;0.003) — and was filed as a curiosity, not a finding:
+    under-dispersion is a different model, and with 574 quantities
+    examined, ~5.7 readings below p&nbsp;=&nbsp;0.01 were expected
+    (4 appeared).</p>
 
   <p class="xref"><b>Paper:</b> §3 &amp; Figure 4, §3.6 &amp; Figure 5, §5.4 —
     <a href="probsim.pdf">PDF</a>
@@ -789,6 +828,19 @@ p.hist b { color: var(--ink); }
     survey.
   </p>
   <p>
+    <b>In the field:</b> the sibling experiment <em>shastats</em> (paper
+    §4.6) ran one Pearson sum across 256 populations of 2²⁵ SHA-256
+    digests each, binned by <a href="#geometric">leading-zero count</a>
+    (sparse bins pooled so every expected cell holds ≈32): χ² = 5139 on
+    (256−1)(21−1)&nbsp;=&nbsp;5100 df, p&nbsp;=&nbsp;0.35 — a reduced
+    statistic of 1.008 where the calibration says
+    1&nbsp;±&nbsp;0.020.  It also dodged a classic trap: a deterministic
+    per-message weighting inflated its second histogram's total to 67
+    million, but only 22.4 million observations' worth of information —
+    a <em>design effect</em> of 3 that every weighted χ² must be divided
+    by, or everything reads "significant" from pure bookkeeping.
+  </p>
+  <p>
     Like the <a href="#binomial">binomial</a> — a discrete count whose
     continuous limit is the <a href="#normal">normal</a> — χ² works both
     sides of the discrete/continuous divide.
@@ -962,6 +1014,16 @@ p.hist b { color: var(--ink); }
     Gumbel's <em>Statistics of Extremes</em> (1958) made it engineering.
     BLAST E-values in bioinformatics are Gumbel tails, and ML's Gumbel-max
     trick turns softmax sampling into argmax of Gumbel noise.</p>
+  <p class="hist"><b>In the field:</b> the sibling experiment
+    <em>shastats</em> (paper §4.10) kept each population's champion — the
+    digest with the most <a href="#geometric">leading zeros</a> among 2²⁵
+    tries.  Champions ranged from 22 to 33 zeros and matched the
+    <em>exact</em> law of a geometric maximum, F(x)ⁿ (a lattice keeps its
+    wobble, so the exact law, not the Gumbel limit), at p&nbsp;=&nbsp;0.25.
+    Extremes also priced its scariest <a href="#binomial">avalanche
+    cell</a>: +3.9σ observed, but ≈4.35σ is <em>expected</em> for the
+    largest of 6,400 two-sided readings — the worst number in the table
+    was tamer than randomness predicts.</p>
   <div class="viz"><canvas id="cv-gumbel" height="260"></canvas></div>
   <div class="controls">
     <label>sample size n <input type="range" id="gum-n" min="1" max="3"
@@ -1114,6 +1176,13 @@ p.hist b { color: var(--ink); }
       <a href="http://luc.devroye.org/rnbookindex.html">free from the author</a></li>
     <li>Knuth (1997), <em>TAOCP vol. 2: Seminumerical Algorithms</em>, 3rd ed.</li>
     <li>Press et al. (1992), <em>Numerical Recipes in C</em>, 2nd ed., §6.2–6.4.</li>
+    <li>The <em>shastats</em> project (2026), “shastats: Leading-zero
+      statistics of SHA-256” — the sibling experiment quoted in the
+      “In&nbsp;the&nbsp;field” notes above (paper §3.2, §3.3, §4.1, §4.6,
+      §4.10, §5.4).  A local repository with no public remote yet.
+      <span class="local">· local copy <code>refs/shastats-2026.pdf</code>
+      (generated by <code>make fetch-refs</code> from the sibling
+      checkout)</span></li>
   </ul>
   <p style="font-size:14px; color:var(--ink2)">
     The "Origins and habitat" notes throughout this site and the paper
@@ -1139,11 +1208,13 @@ p.hist b { color: var(--ink); }
     probsim — a C99 library, a typeset paper, and this site, kept in sync:
     the code cites paper sections, the paper cites functions, and both link
     here.  <a href="probsim.pdf">Full paper (PDF)</a> ·
-    <a data-repo href="#">source repository</a> · Sibling project:
+    <a data-repo href="#">source repository</a> · Sibling projects:
     <a href="https://sanya-shopper.github.io/randtests/">randtests</a>,
     a survey of the statistical test suites (Diehard, NIST SP 800-22,
-    TestU01, PractRand, SMHasher) that put these distributions to work.
-    Last updated 2026-08-06.
+    TestU01, PractRand, SMHasher) that put these distributions to work,
+    and <em>shastats</em> (not yet online), whose SHA-256 measurements
+    appear in the “In the field” notes throughout this page.
+    Last updated 2026-08-09.
   </div>
 </footer>
 

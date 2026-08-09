@@ -1,6 +1,6 @@
 # refs/ — local copies of the bibliography
 
-*Last updated 2026-08-06.*
+*Last updated 2026-08-09.*
 
 This directory holds local PDF copies of the open-access references cited in
 `paper/references.bib`.  Populate it with:
@@ -29,6 +29,7 @@ canonical sources keeps the repo small and the provenance clean.)
 | `nakamoto-bitcoin-2008.pdf`        | Nakamoto 2008 (`nakamoto2008`) | freely published, bitcoin.org |
 | `rosenfeld-2014-doublespend.pdf`   | Rosenfeld 2014 (`rosenfeld2014`) | open access, arXiv:1402.2009 |
 | `grunspan-perez-marco-2018.pdf`    | Grunspan & Pérez-Marco 2018 (`grunspan2018`) | open access, arXiv:1702.02867 |
+| `shastats-2026.pdf`                | shastats 2026 (`shastats2026`) | *generated, not fetched*: a pandoc snapshot of the sibling `../shastats` repository's README + NOTES (that repo has no public remote) |
 | —                                  | L'Ecuyer & Simard 2007 (`lecuyer2007testu01`) | paywalled (ACM TOMS); cited by DOI |
 | —                                  | Vigna 2016 (`vigna2016xorshift`) | paywalled (ACM TOMS); preprint arXiv:1402.6246 |
 | —                                  | PractRand (`dotyhumphrey_practrand`) | software; cited by URL |

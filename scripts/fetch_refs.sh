@@ -76,4 +76,25 @@ fetch rosenfeld-2014-doublespend.pdf \
 fetch grunspan-perez-marco-2018.pdf \
     "https://arxiv.org/pdf/1702.02867"
 
+# shastats (sibling repository, no public remote): the snapshot is not
+# fetched but *generated*, from the sibling checkout's README and working
+# notes, when both the checkout and pandoc are on hand.  The sed removes
+# the one superscript glyph (U+1D3A) the PDF font lacks.
+SHASTATS_DIR="../shastats"
+if [ -s refs/shastats-2026.pdf ]; then
+    echo "have    refs/shastats-2026.pdf"
+elif [ -d "$SHASTATS_DIR" ] && command -v pandoc >/dev/null 2>&1; then
+    echo "make    refs/shastats-2026.pdf  (from $SHASTATS_DIR)"
+    sed 's/2⁻⁽ᴺ⁺¹⁾/2^--(N+1)/g' \
+        "$SHASTATS_DIR/README.md" "$SHASTATS_DIR/NOTES.md" \
+      | pandoc -f markdown -o refs/shastats-2026.pdf \
+          --pdf-engine=xelatex \
+          -V geometry:margin=2.6cm -V fontsize=11pt -V mainfont="Palatino" \
+          --metadata title="shastats: Leading-Zero Statistics of SHA-256 (README and working notes)" \
+          --metadata date="Snapshot taken 2026-08-09" \
+      || echo "FAILED  refs/shastats-2026.pdf"
+else
+    echo "SKIP    refs/shastats-2026.pdf  (needs ../shastats checkout + pandoc)"
+fi
+
 echo "done."

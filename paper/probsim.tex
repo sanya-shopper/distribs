@@ -104,7 +104,7 @@
 % Deliberately a fixed date, not \today: the built PDF is committed and
 % checked for staleness against its sources (see Makefile: check-sync),
 % so a date that changed on every rebuild would report false drift.
-\date{Last updated 2026-08-06}
+\date{Last updated 2026-08-09}
 
 \begin{document}
 \maketitle
@@ -129,7 +129,13 @@ animated --- each figure caption below links to its interactive
 counterpart.  A sibling project, \href{\sisterurl}{randtests}, surveys
 the statistical test suites (Diehard, NIST SP~800-22, TestU01, PractRand)
 that put several of these distributions to work against real generators
-and hash functions.
+and hash functions.  A second sibling, \texttt{shastats}
+\citep{shastats2026}, hashed eight and a half billion messages to test
+whether SHA-256's leading-zero counts obey the laws developed here; its
+measurements recur through the paper as worked field applications of the
+binomial (\S\ref{par:avalanche}), geometric (\S\ref{par:leadingzeros}),
+uniform (\S\ref{par:pvalunif}), chi-squared (\S\ref{par:homog}), Gumbel
+(\S\ref{par:maxlz}) and dispersion (\S\ref{par:underdisp}) machinery.
 \end{abstract}
 
 % ---- the distributions at a glance (every entry is a hyperlink) ----
@@ -534,6 +540,28 @@ standard failure mode is \emph{overdispersion} --- $p$ varying between
 units inflates the variance beyond $np(1-p)$ --- which is the empirical
 signature that the Beta--binomial mixture of \S\ref{sec:beta} fits better.
 
+\paragraph{A field measurement: the avalanche of SHA-256.}
+\label{par:avalanche}
+The sibling experiment \texttt{shastats} \citep{shastats2026} --- a
+local repository whose measurements recur through this paper --- uses
+the binomial as the yardstick for a cryptographic design goal.  SHA-256
+is the standard hash function producing a 256-bit \emph{digest}, and the
+\emph{strict avalanche criterion} demands that flipping one input bit
+flip each output bit independently with probability $\tfrac12$; the
+\emph{number} of output bits that change should therefore be
+Binomial$(256,\tfrac12)$: mean $np=128$, standard deviation
+$\sqrt{np(1-p)}=\sqrt{256/4}=8$.  Measured exhaustively over
+$419{,}430{,}400$ single-bit-flip pairs, the mean came out $128.0000$
+and the spread $8.0003$.  At a finer grain, each of the $256\times 25 =
+6{,}400$ (input bit, output bit) cells is one coin whose null is an
+\emph{exact} binomial --- one of the two places that project trusts an
+analytic $p$-value, precisely because the null needs no approximation.
+The most lopsided cell ran at $0.500475$ heads, $+3.9$ standard errors,
+which sounds alarming until the maximum of $6{,}400$ readings is priced
+at its own distribution (\S\ref{par:maxlz}: about $4.35\sigma$
+expected).  The binomial supplied both the prediction and the test that
+it holds.
+
 \srcref{src/dist.c: ps\_binomial(), ps\_binomial\_pmf()}
 
 \subsection{Geometric}\label{sec:geometric}
@@ -564,6 +592,26 @@ in demography's fecundability models, as the first defect's position in
 sequential inspection, and as discrete-time survival with constant hazard
 --- the null model against which real ageing or learning effects are
 measured.
+
+\paragraph{A field measurement: leading zeros of SHA-256.}
+\label{par:leadingzeros}
+If a hash digest behaves like 256 fair coin flips
+(\S\ref{par:avalanche} introduced the sibling experiment
+\texttt{shastats}; \S\ref{sec:rayleigh} develops the ideal-hash model),
+its count of \emph{leading zero bits} is the count of tails before the
+first head: Geometric$(\tfrac12)$ in exactly this section's convention,
+$\Pr[N=k]=2^{-(k+1)}$, mean $(1-p)/p=1$.  That count is the quantity
+Bitcoin's proof of work thresholds --- mining
+(\S\ref{par:doublespend}) is waiting for a digest with enough leading
+zeros, a geometric race run billions of times per second.
+\texttt{shastats} \citep{shastats2026} put the law itself on trial:
+$2^{33}$ messages hashed and histogrammed, then compared against
+$2^{-(k+1)}$ with \emph{no parameter fitted}.  The law holds ---
+goodness of fit $p=0.30$ (\S\ref{par:homog} shows the $\chi^2$
+machinery), sample mean $1.000011$ against the theoretical $1$ ---
+eight and a half billion digests behaving like the memoryless coin the
+model promises.  The same project's per-population \emph{maxima}, 22 to
+33 leading zeros, are priced in \S\ref{par:maxlz}.
 
 \srcref{src/dist.c: ps\_geometric(), ps\_geometric\_pmf()}
 
@@ -921,6 +969,24 @@ Uniform$(0,1)$}.  That fact is testable --- the test suite verifies it
 empirically in \S\ref{sec:tests} --- and it underlies $p$-value histograms,
 false-discovery-rate methods, and simulation-based calibration.
 Simulation is one affine map of $U$.
+
+\paragraph{A field measurement: 256 $p$-values on trial.}
+\label{par:pvalunif}
+The sibling experiment \texttt{shastats} (\S\ref{par:avalanche};
+\citealp{shastats2026}) leans on $p$-value uniformity as a working
+instrument.  Its sweep asks whether prefixing a byte to a message moves
+SHA-256's leading-zero distribution (\S\ref{par:leadingzeros}); each of
+the 256 possible prefixes gets its own goodness-of-fit $p$-value, and if
+the null is true \emph{everywhere}, those 256 numbers are themselves a
+Uniform$(0,1)$ sample.  They are: a Kolmogorov--Smirnov test --- the
+largest gap between the 256 values' empirical CDF and the uniform's
+straight line --- comes back at $p=0.62$.  Uniformity also prices the
+scariest number in the table.  The worst-fitting prefix scored
+$p=0.0015$, damning in isolation; but the \emph{minimum} of 256 uniforms
+is Beta$(1,256)$ by the order-statistics law of \S\ref{sec:beta}, under
+which $\Pr[\min\le 0.0015]=1-(1-0.0015)^{256}\approx 0.32$.  An ordinary
+bottom of the class, not a discovery --- the arithmetic that separates
+data dredging from findings.
 
 \paragraph{Origins and habitat.}
 The uniform is classical probability's silent axiom: Laplace's definition
@@ -1429,6 +1495,32 @@ run at scale against real generators, the equidistribution half of the
 Diehard and NIST batteries surveyed by the sibling
 \href{\sisterurl}{randtests} project.\ \webfig{bins}
 
+\paragraph{A field measurement: one $\chi^2$ over 5100 degrees of freedom.}
+\label{par:homog}
+The largest balls-into-bins reading in this paper's orbit is the sibling
+experiment \texttt{shastats} (\S\ref{par:avalanche};
+\citealp{shastats2026}).  Its bins are leading-zero counts
+(\S\ref{par:leadingzeros}), pooled from 20 upward so the thinnest
+expected cell holds about 32 balls --- the $E_i\ge5$ rule observed with
+room to spare, and fixed \emph{before} looking at the data; its
+populations are the 256 possible prefix bytes, $2^{25}$ messages each.
+The omnibus homogeneity test --- one Pearson sum over the
+$256\times21$ table, $(256-1)(21-1)=5100$ degrees of freedom --- landed
+at $\chi^2=5139$, $p=0.35$: a reduced statistic of $1.008$ where the
+calibration above says $1\pm\sqrt{2/5100}=1\pm0.020$.  The prefix does
+not move the distribution, said with one number.  One trap that project
+dodged is worth recording: its alternative weighting counts each message
+once per bit string that pads to it, giving a histogram totalling 67
+million --- but the weights are a deterministic function of the message,
+so a bin count's variance is $p(1-p)\sum_i m_i^2$, not
+$p(1-p)\sum_i m_i$, a \emph{design effect} of almost exactly~3.  Every
+$\chi^2$ on the weighted view is divided by that factor (effective
+sample size 22.4 million, not 67 million) --- without the correction,
+every weighted test screams ``significant'' at pure bookkeeping.  And
+counts that are too \emph{even} carry information here too, in the
+Mendel direction just discussed: \S\ref{par:underdisp} takes up the one
+under-dispersed reading the sweep produced.
+
 \paragraph{Discrete twin, continuous limit.}
 The binomial has a discrete body and a continuous soul: de Moivre's
 theorem (\S\ref{sec:binomial}) approximates the integer count by the
@@ -1672,6 +1764,27 @@ NIST tests, and their published criticisms, are walked through on
 \href{\sisterurl nist-sts.html}{the sibling site}.  Sampling is
 double-log inversion, $X=\mu-\beta\ln(-\ln U)$.
 
+\paragraph{A field measurement: the champion digest, and the scariest cell.}
+\label{par:maxlz}
+The sibling experiment \texttt{shastats} (\S\ref{par:avalanche};
+\citealp{shastats2026}) closes with two textbook extreme-value readings.
+Each of its populations keeps a champion: the digest with the most
+leading zeros among $2^{25}$ tries (\S\ref{par:leadingzeros}).  The
+champions ranged from 22 to 33 leading zeros, and their distribution
+matches the \emph{exact} law of the maximum of $2^{25}$ geometric draws
+--- $F(x)^n$ computed directly rather than the Gumbel limit, because a
+geometric maximum keeps its lattice wobble, the same caveat the
+longest-run law above carries --- at $p=0.25$.  The second reading
+resolves the cliffhanger of \S\ref{par:avalanche}: the most lopsided of
+$6{,}400$ avalanche cells sat $+3.9$ standard errors from a fair coin.
+The right yardstick for a \emph{largest} $z$-score is not the normal but
+its extreme-value behaviour --- location $\sqrt{2\ln n}$ with
+Gumbel-scale fluctuation, about $4.35\sigma$ expected for the biggest of
+$6{,}400$ two-sided readings --- so the table's scariest cell is in fact
+slightly \emph{tamer} than randomness predicts.  Reporting a maximum
+without its denominator would have manufactured a finding; pricing it
+with the extreme-value law dissolved it.
+
 \paragraph{Origins and habitat.}
 Extreme-value theory grew from a practical question --- how large a
 flood must a dam survive? --- and Emil Gumbel's \emph{Statistics of
@@ -1881,6 +1994,30 @@ cluster has a single trial: no within-cluster pairs, nothing to compare,
 and the test is correctly undefined rather than merely uninformative.
 \S\ref{sec:demos} runs all four cases against data whose truth we set
 ourselves.
+
+\paragraph{A field measurement: dispersion with the sign flipped.}
+\label{par:underdisp}
+The sibling experiment \texttt{shastats} (\S\ref{par:avalanche};
+\citealp{shastats2026}) ran exactly this style of audit at scale.  Its
+256 populations of hashes are 256 clusters; for each leading-zero bin it
+asked whether the per-prefix counts scatter as a single binomial says
+they must.  A real prefix dependence would be the beta-binomial
+signature just described --- each prefix drawing its own $p$, variance
+inflated, dispersion index above one.  The measured per-bin dispersion
+across the 256 populations was $1.00$ within noise: the effect is absent
+by the variance route as well as by the mean route of
+\S\ref{par:homog}.  The sweep's one flagged reading ran in the
+\emph{other} direction --- bin~0 of the double hash SHA256d varied
+\emph{less} across prefixes than chance allows (dispersion index
+$0.756$, two-sided $p=0.003$) --- and the handling is a model of the
+discipline this section preaches.  Under-dispersion is not the
+alternative being hunted (the text above: $\rho<0$ ``is a different
+model''); the project had examined 574 quantities, so about $5.7$
+readings below $p=0.01$ were \emph{expected} and four were observed;
+and the oddity was therefore filed as a curiosity worth a second look,
+not a finding.  Knowing which tail of the dispersion scale your
+alternative lives in --- and how many tests you ran --- is the whole
+game.
 
 \srcref{src/stats.c: ps\_tarone\_z()}
 

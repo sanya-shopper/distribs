@@ -1,6 +1,6 @@
 # probsim — classical probability distributions in C99
 
-*Last updated 2026-08-06.*
+*Last updated 2026-08-09.*
 
 A small, portable C99 library and driver application that simulates the major
 classical probability distributions, together with a typeset companion paper
@@ -124,3 +124,19 @@ Rayleigh birthday bound of §4.9, the Gumbel longest-run law of §4.10),
 randtests covers the batteries that use them against real generators —
 including the TestU01 and PractRand runs cited for xoshiro256++ in
 paper §2.2.
+
+## Sibling experiment: shastats
+
+A second sibling, **shastats** (a local repository with no public remote
+yet), hashed 8.6 billion 256-bit messages to test whether a prefixed byte
+moves SHA-256's leading-zero distribution, and whether the inputs sharing
+a leading-zero count have any common structure (both answers: no).  Its
+measurements appear throughout the paper as *field applications* of the
+distributions derived here: the binomial (avalanche, §3.2), the geometric
+(the leading-zero law itself, §3.3), the uniform (256 p-values on trial,
+§4.1), the chi-squared (one homogeneity test on 5100 degrees of freedom,
+§4.6), the Gumbel (per-population champion digests, §4.10), and the
+dispersion machinery (an *under*-dispersion curiosity, §5.4).  A PDF
+snapshot of its README and working notes lands in
+`refs/shastats-2026.pdf` via `make fetch-refs` when a `shastats` checkout
+sits beside this repository.
