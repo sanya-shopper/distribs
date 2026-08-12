@@ -1,3 +1,5 @@
+(PDFs relocated 2026-08-12 to `../refs/distribs/` -- sibling refs tree, local use only.)
+
 # refs/ — local copies of the bibliography
 
 *Last updated 2026-08-09.*
