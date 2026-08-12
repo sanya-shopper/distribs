@@ -6,7 +6,7 @@
 #
 # Only references with a legitimately free PDF are fetched; paywalled items
 # (Welch 1947, Marsaglia & Tsang's TOMS gamma paper, Welford 1962) are cited
-# by DOI in the bibliography instead — see ../refs/distribs/README.md for the full map.
+# by DOI in the bibliography instead — see refs/README.md (in-repo) for the full map.
 #
 # Note: the cloud sandbox this project was authored in blocks arbitrary
 # outbound downloads, which is why the PDFs are fetched by script rather
