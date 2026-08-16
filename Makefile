@@ -38,7 +38,7 @@ run: simulate
 	./simulate
 
 # The paper: LaTeX + BibTeX, driven by latexmk.  Bibliography sources live in
-# paper/references.bib; local PDFs of open-access references live in ../refs/distribs/.
+# paper/references.bib; local PDFs of open-access references live in ../_refs/distribs/.
 # The built PDF is ALWAYS copied to docs/probsim.pdf so the GitHub Pages
 # site serves the current paper — never edit docs/probsim.pdf by hand.
 docs:
@@ -65,7 +65,7 @@ install-hooks:
 	chmod +x .git/hooks/pre-commit
 	@echo "pre-commit hook installed"
 
-# Local PDFs of the open-access references (see refs/README.md; PDFs land in ../refs/distribs/).
+# Local PDFs of the open-access references (see bibsrc/README.md; PDFs land in ../_refs/distribs/).
 fetch-refs:
 	sh scripts/fetch_refs.sh
 

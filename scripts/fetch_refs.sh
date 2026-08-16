@@ -1,12 +1,12 @@
 #!/bin/sh
 # fetch_refs.sh — download local PDF copies of the open-access references
-# cited in paper/references.bib into ../refs/distribs/.
+# cited in paper/references.bib into ../_refs/distribs/.
 #
 # Run from the repository root:   sh scripts/fetch_refs.sh
 #
 # Only references with a legitimately free PDF are fetched; paywalled items
 # (Welch 1947, Marsaglia & Tsang's TOMS gamma paper, Welford 1962) are cited
-# by DOI in the bibliography instead — see refs/README.md (in-repo) for the full map.
+# by DOI in the bibliography instead — see bibsrc/README.md (in-repo) for the full map.
 #
 # Note: the cloud sandbox this project was authored in blocks arbitrary
 # outbound downloads, which is why the PDFs are fetched by script rather
@@ -14,10 +14,10 @@
 
 set -eu
 cd "$(dirname "$0")/.."
-mkdir -p refs
+mkdir -p ../_refs/distribs
 
 fetch() {
-    out="../refs/distribs/$1"
+    out="../_refs/distribs/$1"
     url="$2"
     if [ -s "$out" ]; then
         echo "have    $out"
@@ -81,20 +81,20 @@ fetch grunspan-perez-marco-2018.pdf \
 # notes, when both the checkout and pandoc are on hand.  The sed removes
 # the one superscript glyph (U+1D3A) the PDF font lacks.
 SHASTATS_DIR="../shastats"
-if [ -s ../refs/distribs/shastats-2026.pdf ]; then
-    echo "have    ../refs/distribs/shastats-2026.pdf"
+if [ -s ../_refs/distribs/shastats-2026.pdf ]; then
+    echo "have    ../_refs/distribs/shastats-2026.pdf"
 elif [ -d "$SHASTATS_DIR" ] && command -v pandoc >/dev/null 2>&1; then
-    echo "make    ../refs/distribs/shastats-2026.pdf  (from $SHASTATS_DIR)"
+    echo "make    ../_refs/distribs/shastats-2026.pdf  (from $SHASTATS_DIR)"
     sed 's/2⁻⁽ᴺ⁺¹⁾/2^--(N+1)/g' \
         "$SHASTATS_DIR/README.md" "$SHASTATS_DIR/NOTES.md" \
-      | pandoc -f markdown -o ../refs/distribs/shastats-2026.pdf \
+      | pandoc -f markdown -o ../_refs/distribs/shastats-2026.pdf \
           --pdf-engine=xelatex \
           -V geometry:margin=2.6cm -V fontsize=11pt -V mainfont="Palatino" \
           --metadata title="shastats: Leading-Zero Statistics of SHA-256 (README and working notes)" \
           --metadata date="Snapshot taken 2026-08-09" \
-      || echo "FAILED  ../refs/distribs/shastats-2026.pdf"
+      || echo "FAILED  ../_refs/distribs/shastats-2026.pdf"
 else
-    echo "SKIP    ../refs/distribs/shastats-2026.pdf  (needs ../shastats checkout + pandoc)"
+    echo "SKIP    ../_refs/distribs/shastats-2026.pdf  (needs ../shastats checkout + pandoc)"
 fi
 
 echo "done."

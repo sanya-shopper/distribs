@@ -23,8 +23,8 @@ into the *t*-test.
 | `paper/references.bib`  | Bibliography (BibTeX)                                           | —             |
 | `docs/index.html`       | Interactive web version of the paper (GitHub Pages)             | —             |
 | `docs/probsim.pdf`      | Built copy of the paper, served alongside the site              | —             |
-| `refs/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
-| `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `refs/`           | —             |
+| `bibsrc/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
+| `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `bibsrc/`           | —             |
 | `scripts/charpoly.py`   | Derives & certifies the RNG's primitive characteristic polynomial | paper §2.2  |
 
 Each source file carries comments pointing back to the section of the paper
@@ -38,7 +38,7 @@ make            # builds libprobsim.a and the `simulate` driver
 make test       # builds and runs the unit tests
 make run        # runs the driver (simulation report + t-test demos)
 make docs       # builds paper/probsim.pdf (needs texlive + latexmk)
-make fetch-refs # downloads open-access reference PDFs into refs/
+make fetch-refs # downloads open-access reference PDFs into bibsrc/
 make clean
 ```
 
