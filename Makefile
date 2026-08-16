@@ -4,7 +4,7 @@
 # Build output goes to the disposable tree (CLAUDE.md T2/T4); the pdf
 # stays in the repo (T9). BUILD_TARGET_PREFIX comes from ~/.zshenv.
 BUILD_TARGET_PREFIX ?= /Users/thv/Claude/Projects
-OUT := $(BUILD_TARGET_PREFIX)/buildoutput/distribs
+OUT := $(BUILD_TARGET_PREFIX)/_buildoutput/distribs
 
 CC      ?= gcc
 CFLAGS  ?= -std=c99 -Wall -Wextra -pedantic -O2
