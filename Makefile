@@ -1,6 +1,11 @@
 # probsim — build the library, driver, tests, and the companion paper.
 # See README.md for an overview and paper/probsim.tex for the paper itself.
 
+# Build output goes to the disposable tree (CLAUDE.md T2/T4); the pdf
+# stays in the repo (T9). BUILD_TARGET_PREFIX comes from ~/.zshenv.
+BUILD_TARGET_PREFIX ?= /Users/thv/Claude/Projects
+OUT := $(BUILD_TARGET_PREFIX)/buildoutput/distribs
+
 CC      ?= gcc
 CFLAGS  ?= -std=c99 -Wall -Wextra -pedantic -O2
 CPPFLAGS = -Iinclude
@@ -37,7 +42,8 @@ run: simulate
 # The built PDF is ALWAYS copied to docs/probsim.pdf so the GitHub Pages
 # site serves the current paper — never edit docs/probsim.pdf by hand.
 docs:
-	cd paper && latexmk -pdf -bibtex -interaction=nonstopmode probsim.tex
+	@mkdir -p $(OUT)
+	cd paper && latexmk -auxdir=$(OUT) -emulate-aux-dir -pdf -bibtex -interaction=nonstopmode probsim.tex
 	cp paper/probsim.pdf docs/probsim.pdf
 
 # Rebuild-if-needed (latexmk is checksum-based, so this is fast when the
