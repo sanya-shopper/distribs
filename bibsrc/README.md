@@ -2,7 +2,7 @@
 
 # bibsrc/ — provenance of the local reference copies
 
-*Last updated 2026-08-09.*
+*Last updated 2026-08-22.*
 
 This file maps the local PDF copies of the open-access references cited in
 `paper/references.bib` to their sources.  The PDFs themselves land in

@@ -1,6 +1,6 @@
 # probsim — classical probability distributions in C99
 
-*Last updated 2026-08-09.*
+*Last updated 2026-08-22.*
 
 A small, portable C99 library and driver application that simulates the major
 classical probability distributions, together with a typeset companion paper
