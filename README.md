@@ -23,8 +23,8 @@ into the *t*-test.
 | `paper/references.bib`  | Bibliography (BibTeX)                                           | —             |
 | `docs/index.html`       | Interactive web version of the paper (GitHub Pages)             | —             |
 | `docs/probsim.pdf`      | Built copy of the paper, served alongside the site              | —             |
-| `bibsrc/`                 | Local copies of open-access reference PDFs (`make fetch-refs`)  | —             |
-| `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `bibsrc/`           | —             |
+| `bibsrc/`               | Provenance map of the local reference PDFs (see `bibsrc/README.md`) | —         |
+| `scripts/fetch_refs.sh` | Downloads the open-access reference PDFs into `../_refs/distribs/` | —            |
 | `scripts/charpoly.py`   | Derives & certifies the RNG's primitive characteristic polynomial | paper §2.2  |
 
 Each source file carries comments pointing back to the section of the paper
@@ -38,7 +38,7 @@ make            # builds libprobsim.a and the `simulate` driver
 make test       # builds and runs the unit tests
 make run        # runs the driver (simulation report + t-test demos)
 make docs       # builds paper/probsim.pdf (needs texlive + latexmk)
-make fetch-refs # downloads open-access reference PDFs into bibsrc/
+make fetch-refs # downloads open-access reference PDFs into ../_refs/distribs/
 make clean
 ```
 
@@ -138,5 +138,6 @@ distributions derived here: the binomial (avalanche, §3.2), the geometric
 §4.6), the Gumbel (per-population champion digests, §4.10), and the
 dispersion machinery (an *under*-dispersion curiosity, §5.4).  A PDF
 snapshot of its README and working notes lands in
-`refs/shastats-2026.pdf` via `make fetch-refs` when a `shastats` checkout
-sits beside this repository.
+`../_refs/distribs/shastats-2026.pdf` via `make fetch-refs` when the
+sibling checkout (directory `../256-shastats`) sits beside this
+repository.
