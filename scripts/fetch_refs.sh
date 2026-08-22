@@ -53,9 +53,11 @@ fetch oneill-pcg-2014.pdf \
 fetch marsaglia-2003-xorshift.pdf \
     "https://www.jstatsoft.org/index.php/jss/article/view/v008i14/xorshift.pdf"
 
-# Bayes (1763) — open access at the Royal Society (paper §4.5 history).
+# Bayes (1763) — public-domain scan, University of York history-of-
+# statistics archive (paper §4.5 history).  The Royal Society's own PDF
+# (doi:10.1098/rstl.1763.0053) now 403s non-browser downloads.
 fetch bayes-1763.pdf \
-    "https://royalsocietypublishing.org/doi/pdf/10.1098/rstl.1763.0053"
+    "https://www.york.ac.uk/depts/maths/histstat/essay.pdf"
 
 # Wilks (1938) — open access at Project Euclid (paper §4.6 history).
 fetch wilks-1938.pdf \
@@ -80,7 +82,7 @@ fetch grunspan-perez-marco-2018.pdf \
 # fetched but *generated*, from the sibling checkout's README and working
 # notes, when both the checkout and pandoc are on hand.  The sed removes
 # the one superscript glyph (U+1D3A) the PDF font lacks.
-SHASTATS_DIR="../shastats"
+SHASTATS_DIR="../256-shastats"
 if [ -s ../_refs/distribs/shastats-2026.pdf ]; then
     echo "have    ../_refs/distribs/shastats-2026.pdf"
 elif [ -d "$SHASTATS_DIR" ] && command -v pandoc >/dev/null 2>&1; then
@@ -94,7 +96,7 @@ elif [ -d "$SHASTATS_DIR" ] && command -v pandoc >/dev/null 2>&1; then
           --metadata date="Snapshot taken 2026-08-09" \
       || echo "FAILED  ../_refs/distribs/shastats-2026.pdf"
 else
-    echo "SKIP    ../_refs/distribs/shastats-2026.pdf  (needs ../shastats checkout + pandoc)"
+    echo "SKIP    ../_refs/distribs/shastats-2026.pdf  (needs $SHASTATS_DIR checkout + pandoc)"
 fi
 
 echo "done."

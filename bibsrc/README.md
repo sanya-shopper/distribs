@@ -1,11 +1,13 @@
 (PDFs relocated 2026-08-12 to `../_refs/distribs/` -- sibling refs tree, local use only.)
 
-# bibsrc/ — local copies of the bibliography
+# bibsrc/ — provenance of the local reference copies
 
 *Last updated 2026-08-09.*
 
-This directory holds local PDF copies of the open-access references cited in
-`paper/references.bib`.  Populate it with:
+This file maps the local PDF copies of the open-access references cited in
+`paper/references.bib` to their sources.  The PDFs themselves land in
+`../_refs/distribs/` (a sibling tree beside the repository checkout, not
+committed here).  Populate that tree with:
 
 ```sh
 sh scripts/fetch_refs.sh     # or: make fetch-refs
@@ -15,7 +17,7 @@ sh scripts/fetch_refs.sh     # or: make fetch-refs
 authored blocks arbitrary outbound downloads, and re-fetching from the
 canonical sources keeps the repo small and the provenance clean.)
 
-## What lands here, and what cannot
+## What lands there, and what cannot
 
 | File                               | Reference (bib key)            | Status |
 |------------------------------------|--------------------------------|--------|
@@ -25,13 +27,13 @@ canonical sources keeps the repo small and the provenance clean.)
 | `blackman-vigna-xoshiro.pdf`       | Blackman & Vigna 2021 (`blackman2021xoshiro`) | open access, arXiv:1805.01407 |
 | `oneill-pcg-2014.pdf`              | O'Neill 2014 (`oneill2014pcg`) | free technical report, Harvey Mudd College |
 | `marsaglia-2003-xorshift.pdf`      | Marsaglia 2003 (`marsaglia2003xorshift`) | open access, Journal of Statistical Software |
-| `bayes-1763.pdf`                   | Bayes 1763 (`bayes1763`)       | open access, Royal Society |
+| `bayes-1763.pdf`                   | Bayes 1763 (`bayes1763`)       | public-domain scan, U. York history-of-statistics archive (the Royal Society's own PDF now 403s non-browser downloads) |
 | `wilks-1938.pdf`                   | Wilks 1938 (`wilks1938`)       | open access, Project Euclid |
 | `nist-sp800-22r1a.pdf`             | NIST SP 800-22 (`nist2010`)    | open access, NIST |
 | `nakamoto-bitcoin-2008.pdf`        | Nakamoto 2008 (`nakamoto2008`) | freely published, bitcoin.org |
 | `rosenfeld-2014-doublespend.pdf`   | Rosenfeld 2014 (`rosenfeld2014`) | open access, arXiv:1402.2009 |
 | `grunspan-perez-marco-2018.pdf`    | Grunspan & Pérez-Marco 2018 (`grunspan2018`) | open access, arXiv:1702.02867 |
-| `shastats-2026.pdf`                | shastats 2026 (`shastats2026`) | *generated, not fetched*: a pandoc snapshot of the sibling `../shastats` repository's README + NOTES (that repo has no public remote) |
+| `shastats-2026.pdf`                | shastats 2026 (`shastats2026`) | *generated, not fetched*: a pandoc snapshot of the sibling `../256-shastats` repository's README + NOTES (that repo has no public remote) |
 | —                                  | L'Ecuyer & Simard 2007 (`lecuyer2007testu01`) | paywalled (ACM TOMS); cited by DOI |
 | —                                  | Vigna 2016 (`vigna2016xorshift`) | paywalled (ACM TOMS); preprint arXiv:1402.6246 |
 | —                                  | PractRand (`dotyhumphrey_practrand`) | software; cited by URL |
