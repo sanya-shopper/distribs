@@ -13,3 +13,4 @@ paper/*.out
 paper/*.toc
 paper/*.fls
 paper/*.fdb_latexmk
+paper/*.brf
